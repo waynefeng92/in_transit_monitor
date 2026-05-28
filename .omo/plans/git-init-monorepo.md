@@ -378,7 +378,7 @@ Step 6: Rename branch + initial commit
 
 ---
 
-- [ ] 5. 分支重命名并完成初始提交
+- [x] 5. 分支重命名并完成初始提交
 
   **What to do**:
   - 执行 `git branch -m master main` 重命名分支
@@ -444,7 +444,7 @@ Step 6: Rename branch + initial commit
 
 > 2 个验证任务按顺序执行（依赖初始提交完成）
 
-- [ ] F1. **完整性验证** — `quick`
+- [x] F1. **完整性验证** — `quick`
 
   对初始提交执行全面验证：
 
@@ -467,7 +467,7 @@ Step 6: Rename branch + initial commit
 
   Output: `检查项 [N/14] 通过 | VERDICT: APPROVE/REJECT`
 
-- [ ] F2. **git log 确认** — `quick`
+- [x] F2. **git log 确认** — `quick`
 
   验证提交历史结构正确：
 
