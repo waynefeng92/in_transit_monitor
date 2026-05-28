@@ -1,0 +1,26 @@
+# IDE
+.idea/
+*.iml
+.vscode/
+.DS_Store
+
+# Build
+target/
+out/
+
+# Logs
+logs/
+*.log
+
+# Maven
+.mvn/
+mvnw
+mvnw.cmd
+
+# Application
+*.pid
+*.orig
+
+# Config (包含敏感信息)
+application-local.yml
+application-prod.yml

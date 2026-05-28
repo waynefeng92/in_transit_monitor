@@ -1,0 +1,26 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: ro-ro-monitor
+  datasource:
+    url: jdbc:mysql://localhost:3306/ro_ro_monitor?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+    username: root
+    password: 11235813@Fw
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  servlet:
+    multipart:
+      max-file-size: 10MB        # 单个文件最大 10MB
+      max-request-size: 10MB     # 整个请求最大 10MB
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    db-config:
+      id-type: auto
+
+monitor:
+  overall-warn-ratio: 0.8

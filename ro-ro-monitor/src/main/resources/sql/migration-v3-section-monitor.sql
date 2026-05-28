@@ -1,0 +1,1 @@
+ALTER TABLE vehicle_transit ADD COLUMN section_monitor_status VARCHAR(20) DEFAULT NULL COMMENT '三段监控状态：NORMAL/WARN/OVERDUE';
