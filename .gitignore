@@ -1,0 +1,21 @@
+# OS files
+.DS_Store
+
+# Dependencies
+node_modules/
+
+# Build outputs
+target/
+
+# Playwright MCP
+.playwright-mcp/
+
+# OMO runtime artifacts (auto-generated, non-committable)
+.omo/evidence/
+.omo/run-continuation/
+.omo/boulder.json
+.omo/drafts/
+.omo/notepads/
+
+# Logs
+*.log
