@@ -1,21 +1,85 @@
-# OS files
+# ==================== OS ====================
 .DS_Store
+.AppleDouble
+.LSOverride
+Thumbs.db
+ehthumbs.db
+Desktop.ini
 
-# Dependencies
-node_modules/
+# ==================== IDE ====================
+# Eclipse
+.classpath
+.factorypath
+.project
+.settings/
 
-# Build outputs
+# IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# VSCode
+.vscode/
+!.vscode/extensions.json
+
+# ==================== Java / Maven ====================
 target/
+out/
+*.jar
+*.war
+*.ear
+*.class
+.mvn/
+mvnw
+mvnw.cmd
+*.pid
+*.orig
 
-# Playwright MCP
+# ==================== Node / Frontend ====================
+node_modules/
+.pnp/
+.pnp.js
+dist/
+dist-ssr/
+*.local
+.cache/
+.parcel-cache/
+.vite/
+*.tsbuildinfo
+
+# ==================== Logs ====================
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ==================== Environment / Config ====================
+.env
+.env.local
+.env.*.local
+application-local.yml
+application-prod.yml
+
+# ==================== AI / OpenCode ====================
+.agents/
+skills-lock.json
 .playwright-mcp/
 
-# OMO runtime artifacts (auto-generated, non-committable)
+# ==================== OMO Runtime ====================
 .omo/evidence/
 .omo/run-continuation/
 .omo/boulder.json
 .omo/drafts/
 .omo/notepads/
 
-# Logs
-*.log
+# ==================== Misc ====================
+*.swp
+*.swo
+*.swn
+*.bak
+*~
+\#*\#
