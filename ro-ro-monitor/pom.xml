@@ -29,6 +29,12 @@
     </properties>
 
     <dependencies>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+
         <!-- Spring Boot Web -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -69,13 +75,6 @@
             <artifactId>lombok</artifactId>
             <version>1.18.38</version>
             <optional>true</optional>
-        </dependency>
-
-        <!-- Knife4j API文档（Swagger增强版） -->
-        <dependency>
-            <groupId>com.github.xiaoymin</groupId>
-            <artifactId>knife4j-openapi2-spring-boot-starter</artifactId>
-            <version>4.3.0</version>
         </dependency>
 
         <dependency>
