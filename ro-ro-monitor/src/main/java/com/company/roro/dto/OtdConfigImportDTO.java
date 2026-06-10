@@ -1,23 +1,16 @@
 package com.company.roro.dto;
 
-import io.swagger.annotations.ApiModel;
-import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
 
 @Data
-@ApiModel("OTD配置导入DTO")
 public class OtdConfigImportDTO {
 
-    @ApiModelProperty("线路ID")
     private Integer routeId;
 
-    @ApiModelProperty("品牌名称")
     private String brandName;
 
-    @ApiModelProperty("出发地")
     private String originCity;
 
-    @ApiModelProperty("目的地")
     private String destCity;
 
     // 7段标准OTD

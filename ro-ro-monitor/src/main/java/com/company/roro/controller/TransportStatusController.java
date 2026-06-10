@@ -2,8 +2,6 @@ package com.company.roro.controller;
 
 import com.company.roro.entity.TransportStatusDict;
 import com.company.roro.service.TransportStatusDictService;
-import io.swagger.annotations.Api;
-import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -28,7 +26,6 @@ import java.util.List;
  *
  * @author roro-team
  */
-@Api(tags = "在途状态字典")
 @RestController
 @RequestMapping("/api/transport-status")
 public class TransportStatusController {
@@ -41,7 +38,6 @@ public class TransportStatusController {
      *
      * @return 按 display_order 排序的状态列表
      */
-    @ApiOperation(value = "查询所有在途状态", notes = "返回按 display_order 排序的8种在途状态，用于前端下拉框和图表展示")
     @GetMapping("/list")
     public List<TransportStatusDict> list() {
         return transportStatusDictService.lambdaQuery()

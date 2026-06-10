@@ -7,9 +7,6 @@ import com.company.roro.dto.SectionChartDataDTO;
 import com.company.roro.dto.SectionBrandChartDataDTO;
 import com.company.roro.entity.*;
 import com.company.roro.service.*;
-import io.swagger.annotations.Api;
-import io.swagger.annotations.ApiOperation;
-import io.swagger.annotations.ApiParam;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -24,7 +21,6 @@ import java.util.stream.Collectors;
 /**
  * 图表数据接口
  */
-@Api(tags = "图表数据")
 @RestController
 @RequestMapping("/api/chart")
 public class ChartController {
@@ -44,16 +40,11 @@ public class ChartController {
     /**
      * 获取品牌-状态分组统计数据
      */
-    @ApiOperation(value = "获取品牌状态图表数据",
-            notes = "返回按品牌、在途状态分组的正常/预警/超期车辆数量")
     @GetMapping("/brand-status")
     public Object getBrandStatusChart(
-            @ApiParam(value = "订单释放时间-起始", example = "2025-01-01T00:00:00")
             @RequestParam(name = "startTime", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startTime,
-            @ApiParam(value = "订单释放时间-结束", example = "2025-12-31T23:59:59")
             @RequestParam(name = "endTime", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endTime,
             @RequestParam(name = "type", required = false, defaultValue = "segment") String type,
-            @ApiParam(value = "三段监控-段名称（前段/中段/后段），用于品牌钻取", example = "中段")
             @RequestParam(name = "sectionName", required = false) String sectionName) {
         // 1. 查询所有未到达的在途车辆
         LambdaQueryWrapper<VehicleTransit> transitQuery = new LambdaQueryWrapper<VehicleTransit>()

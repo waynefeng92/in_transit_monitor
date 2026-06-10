@@ -10,9 +10,6 @@ import com.company.roro.service.BrandDictService;
 import com.company.roro.service.PortDictService;
 import com.company.roro.service.RouteDictService;
 import com.company.roro.service.RouteOtdConfigService;
-import io.swagger.annotations.Api;
-import io.swagger.annotations.ApiOperation;
-import io.swagger.annotations.ApiParam;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -44,7 +41,6 @@ import java.util.stream.Collectors;
  *
  * @author roro-team
  */
-@Api(tags = "OTD时效配置")
 @RestController
 @RequestMapping("/api/otd-config")
 public class RouteOtdConfigController {
@@ -67,10 +63,8 @@ public class RouteOtdConfigController {
      * @param routeId 线路ID
      * @return OTD配置信息
      */
-    @ApiOperation(value = "根据线路查询OTD配置", notes = "返回指定线路的7段标准OTD时效和预警时效配置")
     @GetMapping("/route/{routeId}")
     public RouteOtdConfig getByRouteId(
-            @ApiParam(value = "线路ID", required = true, example = "1")
             @PathVariable Integer routeId) {
         return routeOtdConfigService.lambdaQuery()
                 .eq(RouteOtdConfig::getRouteId, routeId)
@@ -84,10 +78,8 @@ public class RouteOtdConfigController {
      * @param id 配置ID
      * @return OTD配置信息
      */
-    @ApiOperation(value = "根据ID查询OTD配置", notes = "返回指定ID的OTD配置详细信息")
     @GetMapping("/{id}")
     public RouteOtdConfig getById(
-            @ApiParam(value = "配置ID", required = true, example = "1")
             @PathVariable Integer id) {
         return routeOtdConfigService.getById(id);
     }
@@ -98,10 +90,8 @@ public class RouteOtdConfigController {
      * @param config OTD配置信息
      * @return 是否成功
      */
-    @ApiOperation(value = "新增OTD配置", notes = "为指定线路添加OTD时效配置，每条线路只能有一条激活的配置")
     @PostMapping
     public boolean save(
-            @ApiParam(value = "OTD配置信息", required = true)
             @RequestBody RouteOtdConfig config) {
         return routeOtdConfigService.save(config);
     }
@@ -112,10 +102,8 @@ public class RouteOtdConfigController {
      * @param config OTD配置信息（必须包含ID）
      * @return 是否成功
      */
-    @ApiOperation(value = "更新OTD配置", notes = "根据ID更新OTD时效配置")
     @PutMapping
     public boolean update(
-            @ApiParam(value = "OTD配置信息（必须包含ID）", required = true)
             @RequestBody RouteOtdConfig config) {
         return routeOtdConfigService.updateById(config);
     }
@@ -126,10 +114,8 @@ public class RouteOtdConfigController {
      * @param id 配置ID
      * @return 是否成功
      */
-    @ApiOperation(value = "删除OTD配置", notes = "软删除，将 is_active 设置为 0")
     @DeleteMapping("/{id}")
     public boolean delete(
-            @ApiParam(value = "配置ID", required = true, example = "1")
             @PathVariable Integer id) {
         RouteOtdConfig config = routeOtdConfigService.getById(id);
         if (config != null) {
@@ -144,10 +130,9 @@ public class RouteOtdConfigController {
     /**
      * 导出品牌的OTD配置模板
      */
-    @ApiOperation("导出品牌OTD配置模板")
     @GetMapping("/export/{brandId}")
     public void exportTemplate(
-            @ApiParam(value = "品牌ID", required = true) @PathVariable Integer brandId,
+            @PathVariable Integer brandId,
             HttpServletResponse response) throws IOException {
 
         BrandDict brand = brandDictService.getById(brandId);
@@ -332,10 +317,9 @@ public class RouteOtdConfigController {
     /**
      * 预览导入数据
      */
-    @ApiOperation("预览导入的OTD配置")
     @PostMapping("/import/preview")
     public List<OtdConfigImportDTO> previewImport(
-            @ApiParam(value = "Excel文件", required = true) @RequestParam("file") MultipartFile file) throws Exception {
+            @RequestParam("file") MultipartFile file) throws Exception {
 
         List<OtdConfigImportDTO> result = new ArrayList<>();
 
@@ -392,10 +376,9 @@ public class RouteOtdConfigController {
     /**
      * 批量导入OTD配置
      */
-    @ApiOperation("批量导入OTD配置")
     @PostMapping("/import/batch")
     public OtdConfigImportResultDTO batchImport(
-            @ApiParam(value = "导入数据", required = true) @RequestBody List<OtdConfigImportDTO> importData) {
+            @RequestBody List<OtdConfigImportDTO> importData) {
 
         OtdConfigImportResultDTO result = new OtdConfigImportResultDTO();
 

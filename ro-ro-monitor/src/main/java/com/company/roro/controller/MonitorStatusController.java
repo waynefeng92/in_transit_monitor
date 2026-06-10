@@ -2,8 +2,6 @@ package com.company.roro.controller;
 
 import com.company.roro.entity.MonitorStatusDict;
 import com.company.roro.service.MonitorStatusDictService;
-import io.swagger.annotations.Api;
-import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -23,7 +21,6 @@ import java.util.List;
  *
  * @author roro-team
  */
-@Api(tags = "监控状态字典")
 @RestController
 @RequestMapping("/api/monitor-status")
 public class MonitorStatusController {
@@ -36,7 +33,6 @@ public class MonitorStatusController {
      *
      * @return 监控状态列表（正常、预警、已超期）
      */
-    @ApiOperation(value = "查询所有监控状态", notes = "返回3种监控状态：正常、预警、已超期，用于前端图表展示")
     @GetMapping("/list")
     public List<MonitorStatusDict> list() {
         return monitorStatusDictService.list();

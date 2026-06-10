@@ -6,9 +6,6 @@ import com.company.roro.entity.OrderInfo;
 import com.company.roro.entity.VehicleTransit;
 import com.company.roro.service.OrderInfoService;
 import com.company.roro.service.VehicleTransitService;
-import io.swagger.annotations.Api;
-import io.swagger.annotations.ApiOperation;
-import io.swagger.annotations.ApiParam;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
@@ -24,7 +21,6 @@ import java.util.stream.Collectors;
  *
  * @author roro-team
  */
-@Api(tags = "在途监控")
 @RestController
 @RequestMapping("/api/transit")
 public class TransitController {
@@ -40,7 +36,6 @@ public class TransitController {
      *
      * @return 未到达的车辆列表
      */
-    @ApiOperation(value = "查询在途车辆列表", notes = "返回所有未到达（transport_status != 'ARRIVED'）的车辆，按更新时间倒序排列")
     @GetMapping("/list")
     public List<VehicleTransit> list() {
         return vehicleTransitService.lambdaQuery()
@@ -55,10 +50,8 @@ public class TransitController {
      * @param orderId 订单ID
      * @return 该订单的在途状态
      */
-    @ApiOperation(value = "根据订单查询在途状态", notes = "返回指定订单的当前在途状态和监控状态")
     @GetMapping("/order/{orderId}")
     public VehicleTransit getByOrderId(
-            @ApiParam(value = "订单ID", required = true, example = "1")
             @PathVariable Integer orderId) {
         return vehicleTransitService.lambdaQuery()
                 .eq(VehicleTransit::getOrderId, orderId)
@@ -71,10 +64,8 @@ public class TransitController {
      * @param id 在途记录ID
      * @return 在途状态信息
      */
-    @ApiOperation(value = "根据ID查询在途状态", notes = "返回指定ID的在途状态详细信息")
     @GetMapping("/{id}")
     public VehicleTransit getById(
-            @ApiParam(value = "在途记录ID", required = true, example = "1")
             @PathVariable Integer id) {
         return vehicleTransitService.getById(id);
     }
@@ -84,12 +75,9 @@ public class TransitController {
      *
      * @return 正常/预警/超期的数量统计
      */
-    @ApiOperation(value = "获取监控汇总", notes = "返回所有在途车辆的正常、预警、超期数量统计，用于监控大屏顶部卡片")
     @GetMapping("/summary")
     public TransitSummaryDTO summary(
-            @ApiParam(value = "订单释放时间-起始", example = "2025-01-01T00:00:00")
             @RequestParam(name = "startTime", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startTime,
-            @ApiParam(value = "订单释放时间-结束", example = "2025-12-31T23:59:59")
             @RequestParam(name = "endTime", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endTime) {
         LambdaQueryWrapper<VehicleTransit> query = new LambdaQueryWrapper<VehicleTransit>()
                 .ne(VehicleTransit::getTransportStatus, "ARRIVED");

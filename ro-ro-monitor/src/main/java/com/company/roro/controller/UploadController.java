@@ -7,9 +7,6 @@ import com.company.roro.service.ExcelParseService;
 import com.company.roro.service.TransitDataService;
 import com.company.roro.service.UploadBatchService;
 import com.company.roro.util.BatchIdGenerator;
-import io.swagger.annotations.Api;
-import io.swagger.annotations.ApiOperation;
-import io.swagger.annotations.ApiParam;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.web.bind.annotation.*;
@@ -39,7 +36,6 @@ import java.util.concurrent.Executor;
  *
  * @author roro-team
  */
-@Api(tags = "文件上传")
 @RestController
 @RequestMapping("/api/upload")
 public class UploadController {
@@ -71,15 +67,10 @@ public class UploadController {
      * @param sheetIndex Sheet索引（可选，不传则使用配置规则自动定位）
      * @return Sheet列表、表头、前5行预览数据
      */
-    @ApiOperation(value = "预览Excel文件",
-            notes = "上传前预览，返回Sheet列表、表头行和前5行数据，供用户确认格式")
     @PostMapping("/preview")
     public ExcelPreviewDTO previewExcel(
-            @ApiParam(value = "Excel文件", required = true)
             @RequestParam("file") MultipartFile file,
-            @ApiParam(value = "品牌ID", required = true, example = "1")
             @RequestParam Integer brandId,
-            @ApiParam(value = "Sheet索引（从0开始），不传则使用配置规则自动定位")
             @RequestParam(required = false) Integer sheetIndex) throws Exception {
         return excelParseService.previewExcel(file, brandId, sheetIndex);
     }
@@ -101,19 +92,11 @@ public class UploadController {
      * @param sheetIndex 用户选择的 Sheet 索引（可选，不传则使用配置规则）
      * @return 批次号和处理结果
      */
-    @ApiOperation(value = "上传在途Excel文件",
-            notes = "上传包含车辆在途信息的Excel文件，系统会异步解析并更新在途状态。" +
-                    "返回批次号，可通过 /api/upload/batch/{batchId} 查询处理进度。" +
-                    "状态说明：PROCESSING(处理中)、SUCCESS(成功)、FAILED(失败)")
     @PostMapping("/excel")
     public Map<String, Object> uploadExcel(
-            @ApiParam(value = "Excel文件", required = true)
             @RequestParam("file") MultipartFile file,
-            @ApiParam(value = "上传人", example = "admin")
             @RequestParam(value = "user", defaultValue = "system") String user,
-            @ApiParam(value = "品牌ID", required = true, example = "1")
             @RequestParam Integer brandId,
-            @ApiParam(value = "Sheet索引（从0开始），不传则使用配置规则自动定位")
             @RequestParam(required = false) Integer sheetIndex) throws IOException {
 
         // 1. 生成批次号
@@ -192,7 +175,6 @@ public class UploadController {
      *
      * @return 上传批次列表，按上传时间倒序排列
      */
-    @ApiOperation(value = "查询上传历史", notes = "返回所有上传批次的记录，按上传时间倒序排列")
     @GetMapping("/history")
     public List<UploadBatch> history() {
         return uploadBatchService.lambdaQuery()
@@ -206,10 +188,8 @@ public class UploadController {
      * @param batchId 批次号
      * @return 批次信息，包含处理进度（recordCount）和状态（status）
      */
-    @ApiOperation(value = "根据批次号查询", notes = "返回指定批次号的上传记录详情，包含处理进度和状态")
     @GetMapping("/batch/{batchId}")
     public UploadBatch getByBatchId(
-            @ApiParam(value = "批次号", required = true, example = "BATCH_20260412_143025_a1b2c3")
             @PathVariable String batchId) {
         return uploadBatchService.lambdaQuery()
                 .eq(UploadBatch::getBatchId, batchId)

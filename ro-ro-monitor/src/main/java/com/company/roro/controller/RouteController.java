@@ -8,9 +8,6 @@ import com.company.roro.entity.RouteDict;
 import com.company.roro.service.BrandDictService;
 import com.company.roro.service.PortDictService;
 import com.company.roro.service.RouteDictService;
-import io.swagger.annotations.Api;
-import io.swagger.annotations.ApiOperation;
-import io.swagger.annotations.ApiParam;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,7 +27,6 @@ import java.util.stream.Collectors;
  *
  * @author roro-team
  */
-@Api(tags = "线路管理")
 @RestController
 @RequestMapping("/api/route")
 public class RouteController {
@@ -50,10 +46,8 @@ public class RouteController {
      * @param includeDisabled 是否包含已禁用的线路
      * @return 线路列表
      */
-    @ApiOperation(value = "查询所有线路", notes = "返回线路列表，可通过参数控制是否包含已禁用")
     @GetMapping("/list")
     public List<RouteDict> list(
-            @ApiParam(value = "是否包含已禁用", example = "false")
             @RequestParam(required = false, defaultValue = "false") Boolean includeDisabled) {
         if (includeDisabled) {
             return routeDictService.lambdaQuery()
@@ -73,10 +67,8 @@ public class RouteController {
      * @param brandId 品牌ID
      * @return 该品牌下的所有激活线路
      */
-    @ApiOperation(value = "根据品牌查询线路", notes = "返回指定品牌下的所有激活线路")
     @GetMapping("/list/{brandId}")
     public List<RouteDict> listByBrand(
-            @ApiParam(value = "品牌ID", required = true, example = "1")
             @PathVariable Integer brandId) {
         return routeDictService.lambdaQuery()
                 .eq(RouteDict::getBrandId, brandId)
@@ -90,10 +82,8 @@ public class RouteController {
      * @param id 线路ID
      * @return 线路信息
      */
-    @ApiOperation(value = "根据ID查询线路", notes = "返回指定ID的线路详细信息")
     @GetMapping("/{id}")
     public RouteDict getById(
-            @ApiParam(value = "线路ID", required = true, example = "1")
             @PathVariable Integer id) {
         return routeDictService.getById(id);
     }
@@ -104,10 +94,8 @@ public class RouteController {
      * @param routeDict 线路信息
      * @return 是否成功
      */
-    @ApiOperation(value = "新增线路", notes = "添加新的运输线路")
     @PostMapping
     public boolean save(
-            @ApiParam(value = "线路信息", required = true)
             @RequestBody RouteDict routeDict) {
         return routeDictService.save(routeDict);
     }
@@ -118,10 +106,8 @@ public class RouteController {
      * @param routeDict 线路信息（必须包含ID）
      * @return 是否成功
      */
-    @ApiOperation(value = "更新线路", notes = "根据ID更新线路信息")
     @PutMapping
     public boolean update(
-            @ApiParam(value = "线路信息（必须包含ID）", required = true)
             @RequestBody RouteDict routeDict) {
         return routeDictService.updateById(routeDict);
     }
@@ -132,10 +118,8 @@ public class RouteController {
      * @param id 线路ID
      * @return 是否成功
      */
-    @ApiOperation(value = "删除线路", notes = "软删除，将 is_active 设置为 0")
     @DeleteMapping("/{id}")
     public boolean delete(
-            @ApiParam(value = "线路ID", required = true, example = "1")
             @PathVariable Integer id) {
         RouteDict route = routeDictService.getById(id);
         if (route != null) {
@@ -150,7 +134,6 @@ public class RouteController {
     /**
      * 下载线路导入模板
      */
-    @ApiOperation("下载线路导入模板")
     @GetMapping("/template")
     public void downloadTemplate(HttpServletResponse response) throws IOException {
         String fileName = "线路批量导入模板.xlsx";
@@ -215,10 +198,8 @@ public class RouteController {
     /**
      * 预览导入数据（带校验）
      */
-    @ApiOperation("预览导入的线路数据（带校验）")
     @PostMapping("/import/preview")
     public RouteImportPreviewDTO previewImport(
-            @ApiParam(value = "Excel文件", required = true)
             @RequestParam("file") MultipartFile file) throws Exception {
 
         RouteImportPreviewDTO preview = new RouteImportPreviewDTO();
@@ -313,10 +294,8 @@ public class RouteController {
     /**
      * 批量导入线路
      */
-    @ApiOperation("批量导入线路")
     @PostMapping("/import/batch")
     public RouteImportResultDTO batchImport(
-            @ApiParam(value = "导入数据", required = true)
             @RequestBody List<RouteImportRequestDTO> importData) {
 
         RouteImportResultDTO result = new RouteImportResultDTO();

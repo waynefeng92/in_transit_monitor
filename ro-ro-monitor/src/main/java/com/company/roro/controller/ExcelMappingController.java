@@ -6,9 +6,6 @@ import com.company.roro.entity.BrandDict;
 import com.company.roro.entity.ExcelFieldMapping;
 import com.company.roro.service.BrandDictService;
 import com.company.roro.service.ExcelFieldMappingService;
-import io.swagger.annotations.Api;
-import io.swagger.annotations.ApiOperation;
-import io.swagger.annotations.ApiParam;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -23,7 +20,6 @@ import java.util.stream.Collectors;
  *
  * @author roro-team
  */
-@Api(tags = "Excel字段映射配置")
 @RestController
 @RequestMapping("/api/excel-mapping")
 public class ExcelMappingController {
@@ -57,7 +53,6 @@ public class ExcelMappingController {
      *
      * @return 标准字段列表
      */
-    @ApiOperation(value = "获取标准字段列表", notes = "返回系统支持的所有标准字段，供前端下拉框选择")
     @GetMapping("/standard-fields")
     public List<StandardFieldDTO> getStandardFields() {
         return STANDARD_FIELDS;
@@ -71,14 +66,10 @@ public class ExcelMappingController {
      * @param brandId 品牌ID（可选）
      * @return 分页结果
      */
-    @ApiOperation(value = "分页查询映射配置", notes = "支持按品牌筛选")
     @GetMapping("/list")
     public Page<ExcelMappingDTO> list(
-            @ApiParam(value = "当前页码", example = "1")
             @RequestParam(defaultValue = "1") Integer current,
-            @ApiParam(value = "每页条数", example = "20")
             @RequestParam(defaultValue = "20") Integer size,
-            @ApiParam(value = "品牌ID", required = false)
             @RequestParam(required = false) Integer brandId) {
 
         // 查询配置
@@ -115,10 +106,8 @@ public class ExcelMappingController {
      * @param brandId 品牌ID，传0或null表示查询默认规则
      * @return 该品牌的配置列表
      */
-    @ApiOperation(value = "根据品牌查询配置", notes = "返回指定品牌的所有配置，brandId=0表示默认规则")
     @GetMapping("/brand/{brandId}")
     public List<ExcelMappingDTO> getByBrandId(
-            @ApiParam(value = "品牌ID，0表示默认规则", required = true, example = "1")
             @PathVariable Integer brandId) {
 
         Integer queryBrandId = (brandId == 0) ? null : brandId;
@@ -147,10 +136,8 @@ public class ExcelMappingController {
      * @param dto 配置信息
      * @return 是否成功
      */
-    @ApiOperation(value = "新增配置", notes = "添加一条字段映射规则")
     @PostMapping
     public boolean save(
-            @ApiParam(value = "配置信息", required = true)
             @RequestBody ExcelMappingDTO dto) {
         ExcelFieldMapping entity = new ExcelFieldMapping();
         BeanUtils.copyProperties(dto, entity);
@@ -163,10 +150,8 @@ public class ExcelMappingController {
      * @param dto 配置信息（必须包含ID）
      * @return 是否成功
      */
-    @ApiOperation(value = "更新配置", notes = "根据ID更新配置")
     @PutMapping
     public boolean update(
-            @ApiParam(value = "配置信息（必须包含ID）", required = true)
             @RequestBody ExcelMappingDTO dto) {
         ExcelFieldMapping entity = new ExcelFieldMapping();
         BeanUtils.copyProperties(dto, entity);
@@ -181,10 +166,8 @@ public class ExcelMappingController {
      * @param request 批量保存请求
      * @return 是否成功
      */
-    @ApiOperation(value = "批量保存配置", notes = "保存某品牌的所有配置，会先删除该品牌的旧配置再插入新配置")
     @PostMapping("/batch")
     public boolean batchSave(
-            @ApiParam(value = "批量保存请求", required = true)
             @RequestBody BatchSaveMappingRequest request) {
 
         Integer brandId = request.getBrandId();
@@ -217,10 +200,8 @@ public class ExcelMappingController {
      * @param id 配置ID
      * @return 是否成功
      */
-    @ApiOperation(value = "删除配置", notes = "物理删除")
     @DeleteMapping("/{id}")
     public boolean delete(
-            @ApiParam(value = "配置ID", required = true, example = "1")
             @PathVariable Integer id) {
         return excelFieldMappingService.removeById(id);
     }
@@ -233,10 +214,8 @@ public class ExcelMappingController {
      * @param request 复制请求
      * @return 复制结果
      */
-    @ApiOperation(value = "复制配置", notes = "将源品牌的配置复制到目标品牌")
     @PostMapping("/copy")
     public Map<String, Object> copyMapping(
-            @ApiParam(value = "复制请求", required = true)
             @RequestBody CopyMappingRequest request) {
 
         Integer sourceBrandId = request.getSourceBrandId();
@@ -285,12 +264,9 @@ public class ExcelMappingController {
      * @param isActive 是否启用
      * @return 是否成功
      */
-    @ApiOperation(value = "启用/禁用配置", notes = "切换配置的启用状态")
     @PutMapping("/{id}/status")
     public boolean updateStatus(
-            @ApiParam(value = "配置ID", required = true)
             @PathVariable Integer id,
-            @ApiParam(value = "是否启用：1启用，0禁用", required = true)
             @RequestParam Integer isActive) {
 
         ExcelFieldMapping entity = new ExcelFieldMapping();
