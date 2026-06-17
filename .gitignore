@@ -75,6 +75,9 @@ skills-lock.json
 .omo/boulder.json
 .omo/drafts/
 .omo/notepads/
+.omo/plans/
+.omo/atlas-rules.md
+AGENTS.md
 
 # ==================== Misc ====================
 *.swp
