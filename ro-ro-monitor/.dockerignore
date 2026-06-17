@@ -1,0 +1,6 @@
+target/
+.git
+logs/
+uploads/
+*.md
+.gitignore

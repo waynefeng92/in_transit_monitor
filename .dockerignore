@@ -1,0 +1,15 @@
+**/.git
+**/.gitignore
+**/node_modules
+**/target
+**/.omo
+**/.vscode
+**/.idea
+**/*.md
+**/.env.local
+**/.env.*.local
+**/logs
+**/uploads
+**/Dockerfile
+**/docker-compose.yml
+**/.dockerignore
