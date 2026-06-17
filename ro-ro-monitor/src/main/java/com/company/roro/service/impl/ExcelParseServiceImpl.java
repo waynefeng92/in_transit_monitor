@@ -12,10 +12,13 @@ import com.company.roro.service.ExcelFieldMappingService;
 import com.company.roro.service.ExcelParseConfigService;
 import com.company.roro.service.ExcelParseService;
 import com.company.roro.util.ExcelParseUtil;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.openxml4j.util.ZipSecureFile;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+
 
 import java.util.ArrayList;
 import java.util.List;
@@ -30,6 +33,7 @@ import java.util.Map;
  *
  * @author roro-team
  */
+@Slf4j
 @Service
 public class ExcelParseServiceImpl implements ExcelParseService {
 
@@ -54,6 +58,7 @@ public class ExcelParseServiceImpl implements ExcelParseService {
         ExcelPreviewDTO previewDTO = new ExcelPreviewDTO();
         previewDTO.setFileName(file.getOriginalFilename());
 
+        ZipSecureFile.setMinInflateRatio(0.001);
         try (Workbook workbook = WorkbookFactory.create(file.getInputStream())) {
             // 1. 获取所有 Sheet 信息
             List<SheetInfoDTO> sheets = ExcelParseUtil.getSheetInfo(workbook);
@@ -106,6 +111,7 @@ public class ExcelParseServiceImpl implements ExcelParseService {
         int headerRowIndex = config != null ? config.getHeaderRowIndex() : 0;
         int dataStartRowIndex = config != null ? config.getDataStartRowIndex() : 1;
 
+        ZipSecureFile.setMinInflateRatio(0.001);
         try (Workbook workbook = WorkbookFactory.create(file.getInputStream())) {
             // 定位目标 Sheet
             Sheet sheet = ExcelParseUtil.locateSheet(workbook, config, sheetIndex);
@@ -120,11 +126,11 @@ public class ExcelParseServiceImpl implements ExcelParseService {
             }
             Map<String, Integer> headerMap = ExcelParseUtil.parseHeader(headerRow);
 
-            System.out.println("===== Excel 实际表头 =====");
+            log.info("===== Excel 实际表头 =====");
             for (Map.Entry<String, Integer> entry : headerMap.entrySet()) {
-                System.out.println("  [" + entry.getKey() + "]");
+                log.info("  [{}]", entry.getKey());
             }
-            System.out.println("=========================");
+            log.info("=========================");
 
             // 逐行解析数据
             for (int i = dataStartRowIndex; i <= sheet.getLastRowNum(); i++) {
@@ -138,7 +144,7 @@ public class ExcelParseServiceImpl implements ExcelParseService {
                 // 验证必填字段
                 String validationError = ExcelParseUtil.validateRequired(dto, mappings);
                 if (validationError != null) {
-                    System.err.println("第 " + (i + 1) + " 行验证失败: " + validationError);
+                    log.error("第 {} 行验证失败: {}", i + 1, validationError);
                     continue;
                 }
 
@@ -154,6 +160,18 @@ public class ExcelParseServiceImpl implements ExcelParseService {
                 }
 
                 result.add(dto);
+            }
+
+            // 设置品牌名称：优先使用品牌ID查找，比WMI检测更可靠
+            if (brandId != null) {
+                BrandDict brand = brandDictService.getById(brandId);
+                if (brand != null) {
+                    for (ExcelRowDTO row : result) {
+                        if (StrUtil.isBlank(row.getBrandName())) {
+                            row.setBrandName(brand.getBrandName());
+                        }
+                    }
+                }
             }
         }
 

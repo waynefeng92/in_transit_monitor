@@ -5,6 +5,7 @@ import com.company.roro.dto.ExcelRowDTO;
 import com.company.roro.dto.SheetInfoDTO;
 import com.company.roro.entity.ExcelFieldMapping;
 import com.company.roro.entity.ExcelParseConfig;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.usermodel.CellType;
 
@@ -28,6 +29,7 @@ import java.util.*;
  *
  * @author roro-team
  */
+@Slf4j
 public class ExcelParseUtil {
 
     /**
@@ -213,8 +215,8 @@ public class ExcelParseUtil {
 
             // 添加调试日志
             if ("departWarehouseTime".equals(standardField)) {
-                System.out.println("===== 调试 departWarehouseTime =====");
-                System.out.println("  表头名称配置: " + mapping.getExcelColumnNames());
+                log.info("===== 调试 departWarehouseTime =====");
+                log.info("  表头名称配置: {}", mapping.getExcelColumnNames());
             }
 
             String[] excelNames = mapping.getExcelColumnNames().split(",");
@@ -224,14 +226,14 @@ public class ExcelParseUtil {
 
             // 针对 departWarehouseTime 添加完整日志
             if ("departWarehouseTime".equals(standardField)) {
-                System.out.println("===== 调试 departWarehouseTime =====");
-                System.out.println("  表头名称配置: " + mapping.getExcelColumnNames());
-                System.out.println("  列索引: " + colIndex);
+                log.info("===== 调试 departWarehouseTime =====");
+                log.info("  表头名称配置: {}", mapping.getExcelColumnNames());
+                log.info("  列索引: {}", colIndex);
             }
 
             if (colIndex == null) {
                 if ("departWarehouseTime".equals(standardField)) {
-                    System.out.println("  结果: 未找到匹配列");
+                    log.info("  结果: 未找到匹配列");
                 }
                 if (StrUtil.isNotBlank(mapping.getDefaultValue())) {
                     setFieldValue(dto, standardField, mapping.getDefaultValue(), dateFormat);
@@ -243,22 +245,22 @@ public class ExcelParseUtil {
             String cellValue = getCellValueAsString(cell);
 
             if ("departWarehouseTime".equals(standardField)) {
-                System.out.println("  单元格原始值: " + cellValue);
+                log.info("  单元格原始值: {}", cellValue);
             }
 
             if (StrUtil.isNotBlank(cellValue)) {
                 setFieldValue(dto, standardField, cellValue, dateFormat);
                 if ("departWarehouseTime".equals(standardField)) {
-                    System.out.println("  解析结果: " + dto.getDepartWarehouseTime());
+                    log.info("  解析结果: {}", dto.getDepartWarehouseTime());
                 }
             } else if (StrUtil.isNotBlank(mapping.getDefaultValue())) {
                 setFieldValue(dto, standardField, mapping.getDefaultValue(), dateFormat);
             }
 
             if ("departWarehouseTime".equals(standardField)) {
-                System.out.println("  列索引: " + colIndex);
-                System.out.println("  单元格原始值: " + cellValue);
-                System.out.println("  解析结果: " + dto.getDepartWarehouseTime());
+                log.info("  列索引: {}", colIndex);
+                log.info("  单元格原始值: {}", cellValue);
+                log.info("  解析结果: {}", dto.getDepartWarehouseTime());
             }
         }
 
@@ -348,15 +350,16 @@ public class ExcelParseUtil {
                     return cell.getStringCellValue().trim();
 
                 case NUMERIC:
+                    double rawNum = cell.getNumericCellValue();
                     if (org.apache.poi.ss.usermodel.DateUtil.isCellDateFormatted(cell)) {
+                        if (rawNum > -1 && rawNum < 1) return null;
                         Date date = cell.getDateCellValue();
                         return new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(date);
                     } else {
-                        double numericValue = cell.getNumericCellValue();
-                        if (numericValue == Math.floor(numericValue) && !Double.isInfinite(numericValue)) {
-                            return String.valueOf((long) numericValue);
+                        if (rawNum == Math.floor(rawNum) && !Double.isInfinite(rawNum)) {
+                            return String.valueOf((long) rawNum);
                         } else {
-                            return String.valueOf(numericValue);
+                            return String.valueOf(rawNum);
                         }
                     }
 
@@ -371,7 +374,10 @@ public class ExcelParseUtil {
 
                         if (resultType == CellType.NUMERIC) {
                             // 公式结果是数字，检查是否是日期
+                            double formulaVal = cell.getNumericCellValue();
                             if (org.apache.poi.ss.usermodel.DateUtil.isCellDateFormatted(cell)) {
+                                // 公式计算为空时可能返回 0 被误认为 1899-12-30
+                                if (formulaVal > -1 && formulaVal < 1) return null;
                                 Date date = cell.getDateCellValue();
                                 return new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(date);
                             } else {
@@ -402,7 +408,7 @@ public class ExcelParseUtil {
                     return null;
             }
         } catch (Exception e) {
-            System.err.println("获取单元格值失败: " + e.getMessage());
+            log.error("获取单元格值失败: {}", e.getMessage(), e);
             return null;
         }
     }
@@ -473,11 +479,11 @@ public class ExcelParseUtil {
 
                 default:
                     // 未知字段，忽略
-                    System.err.println("未知的标准字段: " + standardField);
+                    log.warn("未知的标准字段: {}", standardField);
                     break;
             }
         } catch (Exception e) {
-            System.err.println("字段 " + standardField + " 解析失败，值: " + value + "，错误: " + e.getMessage());
+            log.error("字段 {} 解析失败，值: {}，错误: {}", standardField, value, e.getMessage(), e);
         }
     }
 
@@ -529,7 +535,7 @@ public class ExcelParseUtil {
             return null;
 
         } catch (Exception e) {
-            System.err.println("时间解析失败: " + value);
+            log.warn("时间解析失败: {}", value);
             return null;
         }
     }

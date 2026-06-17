@@ -4,10 +4,11 @@ server:
 spring:
   application:
     name: ro-ro-monitor
+  profiles:
+    active: dev
   datasource:
     url: jdbc:mysql://localhost:3306/ro_ro_monitor?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
     username: root
-    password: 11235813@Fw
     driver-class-name: com.mysql.cj.jdbc.Driver
   servlet:
     multipart:
@@ -17,10 +18,22 @@ spring:
 mybatis-plus:
   configuration:
     map-underscore-to-camel-case: true
-    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
   global-config:
     db-config:
       id-type: auto
 
+logging:
+  config: classpath:logback-spring.xml
+  level:
+    com.company.roro.mapper: WARN
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+
 monitor:
   overall-warn-ratio: 0.8
+  snapshot:
+    cron: "0 */30 * * * ?"  # 每半小时采集一次快照，默认cron表达式，可自定义

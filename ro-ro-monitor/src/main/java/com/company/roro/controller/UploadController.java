@@ -2,11 +2,13 @@ package com.company.roro.controller;
 
 import com.company.roro.dto.ExcelPreviewDTO;
 import com.company.roro.dto.ExcelRowDTO;
+import com.company.roro.dto.ImportResultDTO;
 import com.company.roro.entity.UploadBatch;
 import com.company.roro.service.ExcelParseService;
 import com.company.roro.service.TransitDataService;
 import com.company.roro.service.UploadBatchService;
 import com.company.roro.util.BatchIdGenerator;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.web.bind.annotation.*;
@@ -16,6 +18,8 @@ import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -36,6 +40,7 @@ import java.util.concurrent.Executor;
  *
  * @author roro-team
  */
+@Slf4j
 @RestController
 @RequestMapping("/api/upload")
 public class UploadController {
@@ -118,7 +123,8 @@ public class UploadController {
 
         // 4. 异步处理
         excelExecutor.execute(() -> {
-            System.out.println("=== 异步任务开始执行，批次: " + batchId + " ===");
+            long t0 = System.currentTimeMillis();
+            log.info("=== 异步任务开始执行，批次: {} ===", batchId);
             try {
                 // 使用内存中的字节数组创建新的 MultipartFile 对象
                 MultipartFile asyncFile = new InMemoryMultipartFile(
@@ -130,33 +136,57 @@ public class UploadController {
 
                 // 解析 Excel
                 List<ExcelRowDTO> rows = excelParseService.parseExcel(asyncFile, brandId, sheetIndex);
-                System.out.println("解析完成，共 " + (rows != null ? rows.size() : 0) + " 条数据");
+                long t1 = System.currentTimeMillis();
+                log.info("解析完成，共 {} 条数据，耗时: {}ms", rows != null ? rows.size() : 0, t1 - t0);
 
                 // 入库处理
-                int successCount = transitDataService.processExcelData(rows, batchId);
-                System.out.println("入库完成，成功 " + successCount + " 条");
+                ImportResultDTO result = transitDataService.processExcelData(rows, batchId);
+                long t2 = System.currentTimeMillis();
+                log.info("入库完成: 总数={} 成功={} 路线匹配={} 路线未匹配={} 耗时: {}ms",
+                        result.getTotalCount(), result.getSuccessCount(), result.getRouteMatchedCount(), result.getRouteUnmatchedCount(), t2 - t1);
 
                 // 更新批次状态为成功
                 UploadBatch updateBatch = new UploadBatch();
                 updateBatch.setId(batch.getId());
-                updateBatch.setRecordCount(successCount);
+                updateBatch.setRecordCount(result.getSuccessCount());
                 updateBatch.setStatus("SUCCESS");
+                try {
+                    ObjectMapper mapper = new ObjectMapper();
+                    String resultJson = mapper.writeValueAsString(result);
+                    // Truncate if too long (keep under DB column limit)
+                    if (resultJson.length() > 2000) {
+                        // Keep only first 5 failure details
+                        List<String> trimmed = new ArrayList<>(result.getFailDetails().subList(0, Math.min(5, result.getFailDetails().size())));
+                        trimmed.add("... 共 " + result.getFailCount() + " 条失败、" + result.getRouteUnmatchedCount() + " 条线路未匹配，仅显示前5条");
+                        result.setFailDetails(trimmed);
+                        resultJson = mapper.writeValueAsString(result);
+                    }
+                    // 无异常时不存 errorMessage，避免前端误显示警告
+                    if (result.getFailCount() == 0 && result.getRouteUnmatchedCount() == 0) {
+                        updateBatch.setErrorMessage(null);
+                    } else {
+                        updateBatch.setErrorMessage(resultJson.isEmpty() || "{}".equals(resultJson) ? null : resultJson);
+                    }
+                } catch (Exception e) {
+                    updateBatch.setErrorMessage("{\"successCount\":" + result.getSuccessCount() + "}");
+                }
                 uploadBatchService.updateById(updateBatch);
 
-                System.out.println("=== 批次 " + batchId + " 处理完成，成功 " + successCount + " 条 ===");
+                long t3 = System.currentTimeMillis();
+                log.info("=== 批次 {} 完成: 总数={} 成功={} 失败={} 总耗时={}ms ===",
+                        batchId, result.getTotalCount(), result.getSuccessCount(), result.getFailCount(), t3 - t0);
             } catch (Exception e) {
-                System.err.println("=== 批次 " + batchId + " 处理失败 ===");
-                e.printStackTrace();
+                log.error("=== 批次 {} 处理失败 ===", batchId, e);
 
                 // 更新批次状态为失败，记录错误信息
                 UploadBatch updateBatch = new UploadBatch();
                 updateBatch.setId(batch.getId());
                 updateBatch.setStatus("FAILED");
-                String errorMsg = e.getMessage();
-                if (errorMsg != null && errorMsg.length() > 500) {
-                    errorMsg = errorMsg.substring(0, 500) + "...";
+                String errMsg = e.getMessage();
+                if (errMsg != null && errMsg.length() > 500) {
+                    errMsg = errMsg.substring(0, 500) + "...";
                 }
-                updateBatch.setErrorMessage(errorMsg);
+                updateBatch.setErrorMessage(errMsg);
                 uploadBatchService.updateById(updateBatch);
             }
         });

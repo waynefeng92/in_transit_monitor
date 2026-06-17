@@ -3,20 +3,26 @@ package com.company.roro.service.impl;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.company.roro.dto.ExcelRowDTO;
+import com.company.roro.dto.ImportResultDTO;
 import com.company.roro.config.MonitorConfig;
 import com.company.roro.entity.*;
 import com.company.roro.service.*;
 import com.company.roro.util.StatusCalculator;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 在途数据处理服务实现
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class TransitDataServiceImpl implements TransitDataService {
@@ -27,46 +33,105 @@ public class TransitDataServiceImpl implements TransitDataService {
     private final RouteOtdConfigService routeOtdConfigService;
     private final VehicleTransitService vehicleTransitService;
     private final MonitorConfig monitorConfig;
+    private final LocationAliasService locationAliasService;
 
     @Override
     @Transactional
-    public int processExcelData(List<ExcelRowDTO> rows, String batchId) {
+    public ImportResultDTO processExcelData(List<ExcelRowDTO> rows, String batchId) {
+
+        ImportResultDTO result = new ImportResultDTO();
+        result.setTotalCount(rows.size());
 
         ExcelRowDTO firstRow = rows.get(0);
-        System.out.println("=== 第一条数据 ===");
-        System.out.println("VIN: " + firstRow.getVin());
-        System.out.println("到店时间: " + firstRow.getArriveShopTime());
+        log.info("=== 第一条数据 ===");
+        log.info("VIN: {}", firstRow.getVin());
+        log.info("到店时间: {}", firstRow.getArriveShopTime());
 
         int successCount = 0;
+        int routeMatched = 0;
+        int routeUnmatched = 0;
+        List<String> failDetails = new ArrayList<>();
+
+        // Preload brand cache to avoid per-row DB queries
+        Map<String, BrandDict> brandCache = brandDictService.list().stream()
+            .collect(Collectors.toMap(BrandDict::getBrandName, b -> b, (a, b) -> a));
+        log.info("预加载品牌: {} 条", brandCache.size());
+
+        // Preload route cache: "品牌ID:出发地:目的地" -> RouteDict
+        Map<String, RouteDict> routeCache = routeDictService.list().stream()
+            .collect(Collectors.toMap(
+                r -> r.getBrandId() + ":" + (r.getOriginCity() != null ? r.getOriginCity() : "") + ":" + (r.getDestCity() != null ? r.getDestCity() : ""),
+                r -> r,
+                (a, b) -> a
+            ));
+        log.info("预加载线路: {} 条", routeCache.size());
+
+        // Preload OTD config cache: routeId -> RouteOtdConfig
+        Map<Integer, RouteOtdConfig> otdConfigCache = routeOtdConfigService.lambdaQuery()
+            .eq(RouteOtdConfig::getIsActive, 1)
+            .list().stream()
+            .collect(Collectors.toMap(RouteOtdConfig::getRouteId, c -> c, (a, b) -> a));
+        log.info("预加载OTD配置: {} 条", otdConfigCache.size());
+
+        // Preload location alias cache: alias -> standard_name
+        Map<String, String> aliasMap = locationAliasService.list().stream()
+            .collect(Collectors.toMap(LocationAlias::getAlias, LocationAlias::getStandardName, (a, b) -> a));
+        log.info("预加载地点别名: {} 条", aliasMap.size());
 
         for (ExcelRowDTO row : rows) {
             try {
-                // 1. 处理品牌
-                BrandDict brand = getOrCreateBrand(row.getBrandName());
+                // 1. 处理品牌 (cached lookup)
+                BrandDict brand = brandCache.get(row.getBrandName());
+                if (brand == null && !StrUtil.isBlank(row.getBrandName())) {
+                    brand = new BrandDict();
+                    brand.setBrandName(row.getBrandName());
+                    brand.setIsActive(1);
+                    brandDictService.save(brand);
+                    brandCache.put(row.getBrandName(), brand);
+                }
                 if (brand == null) {
-                    System.err.println("品牌不存在且无法创建: " + row.getBrandName());
+                    log.error("品牌不存在且无法创建: {}", row.getBrandName());
                     continue;
                 }
 
                 // 2. 处理订单
                 OrderInfo order = getOrCreateOrder(brand.getId(), row);
                 if (order == null) {
-                    System.err.println("订单处理失败: VIN=" + row.getVin());
+                    log.error("订单处理失败: VIN={}", row.getVin());
                     continue;
                 }
 
-                // 3. 匹配线路
-                RouteDict route = matchRoute(brand.getId(), row.getOriginCity(), row.getDestCity());
+                // 3. 匹配线路 (cached lookup)
+                // Normalize location names through alias map
+                String normalizedOriginCity = row.getOriginCity();
+                String normalizedDestCity = row.getDestCity();
+                if (normalizedOriginCity != null) {
+                    normalizedOriginCity = aliasMap.getOrDefault(normalizedOriginCity, normalizedOriginCity);
+                }
+                if (normalizedDestCity != null) {
+                    normalizedDestCity = aliasMap.getOrDefault(normalizedDestCity, normalizedDestCity);
+                }
+                String routeKey = brand.getId() + ":" + (normalizedOriginCity != null ? normalizedOriginCity : "") + ":" + (normalizedDestCity != null ? normalizedDestCity : "");
+                RouteDict route = routeCache.get(routeKey);
 
-                // 4. 获取 OTD 配置
+                if (route != null) {
+                    routeMatched++;
+                } else {
+                    routeUnmatched++;
+                    String vin = row.getVin() != null ? row.getVin() : "未知VIN";
+                    String destCity = normalizedDestCity != null ? normalizedDestCity : "未知城市";
+                    failDetails.add("VIN=" + vin + " 城市=" + destCity + " 出发地=" + (normalizedOriginCity != null ? normalizedOriginCity : "") + " 线路未匹配");
+                }
+
+                // 4. 获取 OTD 配置 (cached lookup)
                 RouteOtdConfig otdConfig = null;
                 if (route != null) {
-                    otdConfig = routeOtdConfigService.lambdaQuery()
-                            .eq(RouteOtdConfig::getRouteId, route.getId())
-                            .eq(RouteOtdConfig::getIsActive, 1)
-                            .one();
-                    order.setRouteId(route.getId());
-                    orderInfoService.updateById(order);
+                    otdConfig = otdConfigCache.get(route.getId());
+                    // Only update order when routeId actually changes
+                    if (!route.getId().equals(order.getRouteId())) {
+                        order.setRouteId(route.getId());
+                        orderInfoService.updateById(order);
+                    }
                 }
 
                 // 5. 构建在途记录
@@ -106,12 +171,18 @@ public class TransitDataServiceImpl implements TransitDataService {
                 successCount++;
 
             } catch (Exception e) {
-                System.err.println("处理行数据失败: VIN=" + row.getVin() + ", 错误: " + e.getMessage());
-                e.printStackTrace();
+                log.error("处理行数据失败: VIN={}, 错误: {}", row.getVin(), e.getMessage(), e);
+                failDetails.add("VIN=" + (row.getVin() != null ? row.getVin() : "?") + " 处理失败: " + e.getMessage());
             }
         }
 
-        return successCount;
+        result.setSuccessCount(successCount);
+        result.setFailCount(rows.size() - successCount);
+        result.setRouteMatchedCount(routeMatched);
+        result.setRouteUnmatchedCount(routeUnmatched);
+        result.setFailDetails(failDetails);
+
+        return result;
     }
 
     /**
@@ -221,20 +292,53 @@ public class TransitDataServiceImpl implements TransitDataService {
      * Upsert 在途记录
      */
     private void upsertVehicleTransit(VehicleTransit transit) {
-        System.out.println("准备入库，orderId: " + transit.getOrderId());
-        System.out.println("  arriveShopTime: " + transit.getArriveShopTime());
+        log.info("准备入库，orderId: {}", transit.getOrderId());
+        log.info("  arriveShopTime: {}", transit.getArriveShopTime());
 
         VehicleTransit existing = vehicleTransitService.lambdaQuery()
                 .eq(VehicleTransit::getOrderId, transit.getOrderId())
                 .one();
 
         if (existing != null) {
-            transit.setId(existing.getId());
-            vehicleTransitService.updateById(transit);
-            System.out.println("  更新成功");
+            if (transit.getDepartWarehouseTime() != null) {
+                existing.setDepartWarehouseTime(transit.getDepartWarehouseTime());
+            }
+            if (transit.getArrivePortTime() != null) {
+                existing.setArrivePortTime(transit.getArrivePortTime());
+            }
+            if (transit.getShipDepartTime() != null) {
+                existing.setShipDepartTime(transit.getShipDepartTime());
+            }
+            if (transit.getShipArriveTime() != null) {
+                existing.setShipArriveTime(transit.getShipArriveTime());
+            }
+            if (transit.getUnloadFinishTime() != null) {
+                existing.setUnloadFinishTime(transit.getUnloadFinishTime());
+            }
+            if (transit.getDispatchTime() != null) {
+                existing.setDispatchTime(transit.getDispatchTime());
+            }
+            if (transit.getArriveShopTime() != null) {
+                existing.setArriveShopTime(transit.getArriveShopTime());
+            }
+            existing.setBatchId(transit.getBatchId());
+            existing.setDataSource("EXCEL");
+            existing.setUpdatedAt(LocalDateTime.now());
+
+            // 重新计算在途状态（时间字段已更新）
+            String newStatus = StatusCalculator.calculateTransportStatus(existing);
+            existing.setTransportStatus(newStatus);
+
+            // 复制已计算好的监控状态（在 processExcelData 中已根据完整上下文计算）
+            existing.setMonitorStatus(transit.getMonitorStatus());
+            existing.setOverallMonitorStatus(transit.getOverallMonitorStatus());
+            existing.setSectionMonitorStatus(transit.getSectionMonitorStatus());
+
+            vehicleTransitService.updateById(existing);
+            log.info("  合并更新成功");
         } else {
             vehicleTransitService.save(transit);
-            System.out.println("  新增成功，ID: " + transit.getId());
+            log.info("  新增成功，ID: {}", transit.getId());
         }
     }
 }
