@@ -30,23 +30,10 @@ const statusColorMap = {
   超期: '#f56c6c'
 }
 
-const transportStatusPalette = [
-  '#409eff',
-  '#36cfc9',
-  '#73d13d',
-  '#ffc53d',
-  '#ff7a45',
-  '#9254de',
-  '#597ef7',
-  '#5cdbd3',
-  '#95de64',
-  '#ffd666'
-]
-
 const initChart = () => {
   if (!chartRef.value) return
 
-  chartInstance = echarts.init(chartRef.value)
+  chartInstance = echarts.init(chartRef.value, 'roro')
   updateChart()
   window.addEventListener('resize', handleResize)
 }
@@ -54,7 +41,7 @@ const initChart = () => {
 const updateChart = () => {
   if (!chartInstance) return
 
-  const data = buildPieData(props.chartData, props.selectedAlertStatus)
+  const data = buildPieData(props.chartData)
   const hasData = data.some(item => item.value > 0)
 
   if (!hasData) {
@@ -126,31 +113,7 @@ const updateChart = () => {
   }, { notMerge: true })
 }
 
-const buildPieData = (rawData, selectedAlertStatus) => {
-  if (selectedAlertStatus) {
-    const statusFieldMap = {
-      正常: 'normal',
-      预警: 'warn',
-      超期: 'overdue'
-    }
-    const metricField = statusFieldMap[selectedAlertStatus]
-    const transportTotals = new Map()
-
-    rawData.forEach(item => {
-      const transportStatus = item.transportStatus || '未知状态'
-      const value = Number(item[metricField] || 0)
-      transportTotals.set(transportStatus, (transportTotals.get(transportStatus) || 0) + value)
-    })
-
-    return Array.from(transportTotals.entries()).map(([name, value], index) => ({
-      name,
-      value,
-      itemStyle: {
-        color: transportStatusPalette[index % transportStatusPalette.length]
-      }
-    }))
-  }
-
+const buildPieData = (rawData) => {
   const totals = {
     正常: 0,
     预警: 0,

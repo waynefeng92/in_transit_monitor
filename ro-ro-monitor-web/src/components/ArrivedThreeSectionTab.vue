@@ -85,7 +85,7 @@ const emit = defineEmits(['drilldown', 'back'])
 
 const categoryConfig = {
   EFFICIENT: { label: '高效', color: '#67c23a' },
-  NORMAL: { label: '正常', color: '#e6a23c' },
+  NORMAL: { label: '正常', color: '#409eff' },
   DELAYED: { label: '延迟', color: '#f56c6c' }
 }
 
@@ -162,11 +162,11 @@ const pieSubtitle = computed(() => {
 
 const initCharts = () => {
   if (barChartRef.value) {
-    barChartInstance = echarts.init(barChartRef.value)
+    barChartInstance = echarts.init(barChartRef.value, 'roro')
     barChartInstance.on('click', handleBarClick)
   }
   if (pieChartRef.value) {
-    pieChartInstance = echarts.init(pieChartRef.value)
+    pieChartInstance = echarts.init(pieChartRef.value, 'roro')
   }
   updateCharts()
   window.addEventListener('resize', handleResize)
@@ -208,7 +208,7 @@ const updateBarChart = () => {
       barWidth: 54,
       barCategoryGap: '34%',
       itemStyle: {
-        borderRadius: [6, 6, 6, 6]
+        borderRadius: [2, 2, 2, 2]
       },
       label: {
         show: true,
@@ -431,11 +431,11 @@ watch(() => props.loading, (val) => {
   if (!val) {
     nextTick(() => {
       if (!barChartInstance && barChartRef.value) {
-        barChartInstance = echarts.init(barChartRef.value)
+        barChartInstance = echarts.init(barChartRef.value, 'roro')
         barChartInstance.on('click', handleBarClick)
       }
       if (!pieChartInstance && pieChartRef.value) {
-        pieChartInstance = echarts.init(pieChartRef.value)
+        pieChartInstance = echarts.init(pieChartRef.value, 'roro')
       }
       updateCharts()
     })
@@ -478,10 +478,12 @@ onUnmounted(() => {
 }
 
 .chart-card {
-  border-radius: 18px;
-  border: 1px solid #e9f0f8;
-  background: rgba(255, 255, 255, 0.72);
+  border-radius: var(--radius-xl);
+  border: var(--card-border);
+  background: var(--card-gradient);
+  box-shadow: var(--shadow-card);
   padding: 18px 18px 16px;
+  overflow: hidden;
 }
 
 .chart-card__header {
@@ -491,13 +493,13 @@ onUnmounted(() => {
 .chart-card__title {
   font-size: 17px;
   font-weight: 600;
-  color: #13233c;
+  color: var(--text-primary);
 }
 
 .chart-card__subtitle {
   margin-top: 6px;
   font-size: 13px;
-  color: #71839c;
+  color: var(--text-subtle);
 }
 
 .chart-container {

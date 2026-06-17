@@ -2,9 +2,9 @@
   <div class="arrived-dashboard">
     <section class="dashboard-monitor-tabs">
       <el-tabs v-model="activeMonitorTab" @tab-change="handleTabChange">
-        <el-tab-pane label="分段监控" name="segment" />
-        <el-tab-pane label="三段监控" name="three-section" />
         <el-tab-pane label="整段监控" name="overall" />
+        <el-tab-pane label="三段监控" name="three-section" />
+        <el-tab-pane label="分段监控" name="segment" />
       </el-tabs>
     </section>
 
@@ -39,7 +39,7 @@
 
     <section class="dashboard-summary">
       <template v-if="initialLoading">
-        <div v-for="i in 3" :key="i" class="summary-card">
+        <div v-for="i in 4" :key="i" class="summary-card">
           <el-skeleton animated>
             <template #template>
               <div style="padding: 22px 24px;">
@@ -143,12 +143,12 @@
     </template>
 
     <section class="dashboard-panel dashboard-panel-statistics">
-      <div class="panel-header">
+      <div class="card-header">
         <div>
           <div class="panel-title">到达统计</div>
           <div class="panel-subtitle">按周期统计到达车辆效率分布</div>
         </div>
-        <div class="panel-actions">
+        <div class="header-actions">
           <el-radio-group v-model="statisticsPeriod" size="small" @change="handleStatisticsPeriodChange">
             <el-radio-button label="week">周</el-radio-button>
             <el-radio-button label="month">月</el-radio-button>
@@ -178,8 +178,11 @@ import ArrivedThreeSectionTab from '@/components/ArrivedThreeSectionTab.vue'
 import ArrivedStatisticsPanel from '@/components/ArrivedStatisticsPanel.vue'
 
 // State
-const activeMonitorTab = ref('segment')
-const dateRange = ref(null)
+const activeMonitorTab = ref('overall')
+const dateRange = ref([
+  new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().substring(0, 10) + 'T00:00:00',
+  new Date().toISOString().substring(0, 10) + 'T00:00:00'
+])
 const selectedBrand = ref('')
 const loading = ref(false)
 const initialLoading = ref(true)
@@ -219,12 +222,18 @@ const summaryCards = computed(() => [
     label: '延迟',
     value: summary.value.delayedCount || 0,
     meta: '延迟到达车辆数量'
+  },
+  {
+    key: 'total',
+    label: '总数',
+    value: summary.value.totalCount || 0,
+    meta: '总到达车辆数量'
   }
 ])
 
 const hasData = computed(() => {
   const s = summary.value
-  return (s.efficientCount || 0) + (s.normalCount || 0) + (s.delayedCount || 0) > 0
+  return (s.efficientCount || 0) + (s.normalCount || 0) + (s.delayedCount || 0) + (s.totalCount || 0) > 0
 })
 
 // Methods
@@ -232,9 +241,10 @@ const getTimeParams = () => {
   if (!dateRange.value) return {}
   const [start, end] = dateRange.value
   if (!start || !end) return {}
+  const fmtEnd = end.substring ? end : end.toISOString().substring(0, 19)
   return {
-    startTime: start,
-    endTime: end.substring(0, 10) + 'T23:59:59'
+    startTime: start.substring ? start : start.toISOString().substring(0, 19),
+    endTime: fmtEnd.substring(0, 10) + 'T23:59:59'
   }
 }
 
@@ -335,7 +345,7 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 20px;
-  color: #22324d;
+  color: var(--color-body);
 }
 
 .dashboard-monitor-tabs {
@@ -353,15 +363,15 @@ onMounted(() => {
   padding: 0 24px;
   height: 44px;
   line-height: 44px;
-  color: #5e708d;
+  color: var(--text-secondary);
 }
 
 .dashboard-monitor-tabs :deep(.el-tabs__item.is-active) {
-  color: #1d72f3;
+  color: var(--color-primary);
 }
 
 .dashboard-monitor-tabs :deep(.el-tabs__active-bar) {
-  background-color: #1d72f3;
+  background-color: var(--color-primary);
   height: 3px;
 }
 
@@ -370,16 +380,16 @@ onMounted(() => {
   align-items: center;
   gap: 12px;
   padding: 14px 20px;
-  border-radius: 20px;
-  border: 1px solid #dbe7f5;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(246, 250, 255, 0.98));
-  box-shadow: 0 12px 30px rgba(26, 65, 122, 0.08);
+  border-radius: var(--radius-lg);
+  border: var(--card-border);
+  background: var(--card-gradient);
+  box-shadow: var(--shadow-card);
 }
 
 .time-filter__label {
   font-size: 14px;
   font-weight: 600;
-  color: #13233c;
+  color: var(--text-primary);
   white-space: nowrap;
 }
 
@@ -394,12 +404,12 @@ onMounted(() => {
 .filter-reset {
   height: 32px;
   padding: 0 6px;
-  color: #2d78d6;
+  color: var(--color-accent);
 }
 
 .dashboard-summary {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 16px;
 }
 
@@ -409,11 +419,11 @@ onMounted(() => {
   min-height: 144px;
   padding: 22px 24px;
   border-radius: 20px;
-  border: 1px solid #dbe7f5;
+  border: var(--card-border);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(246, 250, 255, 0.98)),
+    var(--card-gradient),
     radial-gradient(circle at top right, rgba(64, 158, 255, 0.12), transparent 42%);
-  box-shadow: 0 12px 30px rgba(26, 65, 122, 0.08);
+  box-shadow: var(--shadow-card);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
@@ -429,14 +439,14 @@ onMounted(() => {
 
 .summary-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 16px 36px rgba(26, 65, 122, 0.14);
+  box-shadow: var(--shadow-card-hover);
 }
 
 .summary-card__label {
   position: relative;
   z-index: 1;
   font-size: 15px;
-  color: #5e708d;
+  color: var(--text-secondary);
   letter-spacing: 1px;
 }
 
@@ -447,19 +457,23 @@ onMounted(() => {
   font-size: 44px;
   line-height: 1;
   font-weight: 700;
-  color: #13233c;
+  color: var(--text-primary);
 }
 
 .summary-card__value-efficient {
-  color: #67c23a;
+  color: var(--color-success);
 }
 
 .summary-card__value-normal {
-  color: #e6a23c;
+  color: var(--color-primary);
 }
 
 .summary-card__value-delayed {
-  color: #f56c6c;
+  color: var(--color-danger);
+}
+
+.summary-card__value-total {
+  color: var(--color-accent);
 }
 
 .summary-card__meta {
@@ -467,25 +481,31 @@ onMounted(() => {
   z-index: 1;
   margin-top: 18px;
   font-size: 13px;
-  color: #7a8aa2;
+  color: var(--text-muted);
 }
 
 .summary-card-efficient {
   background:
-    linear-gradient(180deg, #ffffff, #f3fbf7),
+    linear-gradient(180deg, #ffffff, var(--color-success-bg)),
     radial-gradient(circle at top right, rgba(103, 194, 58, 0.16), transparent 42%);
 }
 
 .summary-card-normal {
   background:
-    linear-gradient(180deg, #ffffff, #fff8ef),
-    radial-gradient(circle at top right, rgba(230, 162, 60, 0.18), transparent 42%);
+    linear-gradient(180deg, #ffffff, var(--color-primary-bg)),
+    radial-gradient(circle at top right, rgba(29, 114, 243, 0.14), transparent 42%);
 }
 
 .summary-card-delayed {
   background:
-    linear-gradient(180deg, #ffffff, #fff4f4),
+    linear-gradient(180deg, #ffffff, var(--color-danger-bg)),
     radial-gradient(circle at top right, rgba(245, 108, 108, 0.18), transparent 42%);
+}
+
+.summary-card-total {
+  background:
+    linear-gradient(180deg, #ffffff, var(--color-info-bg)),
+    radial-gradient(circle at top right, rgba(64, 158, 255, 0.18), transparent 42%);
 }
 
 .empty-data {
@@ -500,15 +520,15 @@ onMounted(() => {
 
 .dashboard-panel {
   padding: 22px 24px 24px;
-  border-radius: 22px;
-  border: 1px solid #dbe7f5;
+  border-radius: var(--radius-xl);
+  border: var(--card-border);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 251, 255, 0.98)),
+    var(--card-gradient),
     radial-gradient(circle at top, rgba(64, 158, 255, 0.08), transparent 36%);
-  box-shadow: 0 14px 34px rgba(26, 65, 122, 0.08);
+  box-shadow: var(--shadow-card);
 }
 
-.panel-header {
+.dashboard-panel-statistics .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -519,42 +539,36 @@ onMounted(() => {
 .panel-title {
   font-size: 20px;
   font-weight: 700;
-  color: #13233c;
+  color: var(--text-primary);
 }
 
 .panel-subtitle {
   margin-top: 8px;
   font-size: 13px;
-  color: #71839c;
-}
-
-.panel-actions {
-  display: flex;
-  align-items: center;
-  gap: 12px;
+  color: var(--text-subtle);
 }
 
 .panel-tag {
   border-color: rgba(64, 158, 255, 0.2);
   background: rgba(64, 158, 255, 0.08);
-  color: #2d78d6;
+  color: var(--color-accent);
 }
 
 :deep(.el-button--primary) {
-  --el-button-bg-color: #1d72f3;
-  --el-button-border-color: #1d72f3;
-  --el-button-hover-bg-color: #3884f7;
-  --el-button-hover-border-color: #3884f7;
+  --el-button-bg-color: var(--color-primary);
+  --el-button-border-color: var(--color-primary);
+  --el-button-hover-bg-color: var(--color-primary-light);
+  --el-button-hover-border-color: var(--color-primary-light);
 }
 
 :deep(.chart-filter .el-select__wrapper) {
   background: #fff;
-  box-shadow: 0 0 0 1px #d7e4f4 inset;
+  box-shadow: 0 0 0 1px var(--color-border-focus) inset;
 }
 
 @media (max-width: 1200px) {
   .dashboard-summary {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 

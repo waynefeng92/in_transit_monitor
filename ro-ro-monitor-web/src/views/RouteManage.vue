@@ -3,7 +3,12 @@
     <el-card>
       <template #header>
         <div class="card-header">
-          <span>线路管理</span>
+          <span>
+            线路管理
+            <el-tag size="small" type="info" effect="plain" style="margin-left: 10px; vertical-align: middle">
+              {{ filteredTableData.length }}
+            </el-tag>
+          </span>
           <div class="header-actions">
             <el-switch
               v-model="showDisabled"
@@ -44,9 +49,24 @@
             :value="brand.id"
           />
         </el-select>
+        <el-input
+          v-model="routeSearch"
+          placeholder="搜索出发地 / 目的地..."
+          clearable
+          style="width: 260px"
+        >
+          <template #prefix>
+            <el-icon><Search /></el-icon>
+          </template>
+        </el-input>
+        <el-button type="primary" @click="showBatchEdit = true" :disabled="selectedRoutes.length === 0">
+          <el-icon><Edit /></el-icon>
+          批量编辑（{{ selectedRoutes.length }}）
+        </el-button>
       </div>
 
-      <el-table :data="filteredTableData" border stripe v-loading="loading">
+      <el-table :data="filteredTableData" border stripe v-loading="loading" @selection-change="handleSelectionChange">
+        <el-table-column type="selection" width="45" />
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column label="品牌" width="120">
           <template #default="{ row }">
@@ -93,6 +113,8 @@
           </template>
         </el-table-column>
       </el-table>
+
+      <el-empty v-if="!loading && filteredTableData.length === 0" description="暂无线路数据" />
     </el-card>
 
     <!-- 新增/编辑对话框 -->
@@ -172,6 +194,13 @@
 
     <!-- 批量导入对话框 -->
     <el-dialog v-model="importDialogVisible" title="批量导入线路" width="900px" @close="resetImport">
+      <!-- 步骤指示器 -->
+      <el-steps :active="importStep - 1" align-center finish-status="success" style="margin-bottom: 28px">
+        <el-step title="上传文件" />
+        <el-step title="预览数据" />
+        <el-step title="导入结果" />
+      </el-steps>
+
       <!-- 步骤1：上传文件 -->
       <div v-if="importStep === 1">
         <el-alert type="info" :closable="false" style="margin-bottom: 16px">
@@ -316,6 +345,37 @@
         </el-button>
       </template>
     </el-dialog>
+
+    <!-- 批量编辑对话框 -->
+    <el-dialog v-model="showBatchEdit" title="批量编辑线路" width="500px" @close="resetBatchForm">
+      <el-form :model="batchEditForm" label-width="100px">
+        <el-form-item label="出发地">
+          <el-input v-model="batchEditForm.originCity" placeholder="留空则不修改" />
+        </el-form-item>
+        <el-form-item label="出发港">
+          <el-select v-model="batchEditForm.originPortId" clearable placeholder="留空则不修改" style="width:100%">
+            <el-option v-for="p in portList" :key="p.id" :label="p.portName" :value="p.id" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="目的港">
+          <el-select v-model="batchEditForm.destPortId" clearable placeholder="留空则不修改" style="width:100%">
+            <el-option v-for="p in portList" :key="p.id" :label="p.portName" :value="p.id" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="目的地">
+          <el-input v-model="batchEditForm.destCity" placeholder="留空则不修改" />
+        </el-form-item>
+        <el-form-item>
+          <span style="color:var(--text-muted);font-size:13px">
+            已选中 {{ selectedRoutes.length }} 条线路，仅填写需要修改的字段，留空则不修改
+          </span>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showBatchEdit = false">取消</el-button>
+        <el-button type="primary" :loading="batchSubmitting" @click="handleBatchEdit">确认修改</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -323,12 +383,12 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Download, Upload, UploadFilled, Setting } from '@element-plus/icons-vue'
+import { Plus, Download, Upload, UploadFilled, Setting, Search, Edit } from '@element-plus/icons-vue'
 import { getBrandList } from '@/api/brand'
 import { getPortList } from '@/api/port'
 import { 
   getRouteList, saveRoute, updateRoute, deleteRoute,
-  downloadTemplate, previewImport, batchImport 
+  downloadTemplate, previewImport, batchImport, batchUpdateRoutes 
 } from '@/api/route'
 
 const router = useRouter()
@@ -339,16 +399,40 @@ const loading = ref(false)
 const showDisabled = ref(false)
 const filterBrandId = ref(null)
 
+// 线路关键字搜索
+const routeSearch = ref('')
+
 // 品牌和港口列表
 const brandList = ref([])
 const activeBrandList = computed(() => brandList.value.filter(b => b.isActive === 1))
 const portList = ref([])
 const activePortList = computed(() => portList.value.filter(p => p.isActive === 1))
 
+// 批量编辑
+const selectedRoutes = ref([])
+const showBatchEdit = ref(false)
+const batchEditForm = reactive({
+  originCity: '',
+  originPortId: null,
+  destPortId: null,
+  destCity: ''
+})
+const batchSubmitting = ref(false)
+
 // 筛选后的表格数据
 const filteredTableData = computed(() => {
-  if (!filterBrandId.value) return tableData.value
-  return tableData.value.filter(item => item.brandId === filterBrandId.value)
+  let data = tableData.value
+  if (filterBrandId.value) {
+    data = data.filter(item => item.brandId === filterBrandId.value)
+  }
+  const kw = routeSearch.value?.toLowerCase().trim()
+  if (kw) {
+    data = data.filter(item =>
+      item.originCity?.toLowerCase().includes(kw) ||
+      item.destCity?.toLowerCase().includes(kw)
+    )
+  }
+  return data
 })
 
 // 对话框
@@ -500,6 +584,42 @@ const resetForm = () => {
   formRef.value?.clearValidate()
 }
 
+// 批量编辑选择
+const handleSelectionChange = (rows) => {
+  selectedRoutes.value = rows
+}
+
+const resetBatchForm = () => {
+  batchEditForm.originCity = ''
+  batchEditForm.originPortId = null
+  batchEditForm.destPortId = null
+  batchEditForm.destCity = ''
+}
+
+const handleBatchEdit = async () => {
+  const updates = selectedRoutes.value.map(route => {
+    const update = { id: route.id }
+    if (batchEditForm.originCity) update.originCity = batchEditForm.originCity
+    if (batchEditForm.originPortId) update.originPortId = batchEditForm.originPortId
+    if (batchEditForm.destPortId) update.destPortId = batchEditForm.destPortId
+    if (batchEditForm.destCity) update.destCity = batchEditForm.destCity
+    return update
+  })
+
+  batchSubmitting.value = true
+  try {
+    const res = await batchUpdateRoutes(updates)
+    ElMessage.success(`成功更新 ${res.successCount} 条，失败 ${res.failCount} 条`)
+    showBatchEdit.value = false
+    loadData()
+  } catch (error) {
+    console.error('批量编辑失败:', error)
+    ElMessage.error('批量编辑失败')
+  } finally {
+    batchSubmitting.value = false
+  }
+}
+
 // 下载模板
 const handleDownloadTemplate = async () => {
   try {
@@ -632,23 +752,50 @@ onMounted(() => {
 .route-manage {
   height: 100%;
 }
+
+.filter-bar {
+  margin-bottom: 18px;
+}
+
+.el-table {
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.el-table :deep(th.el-table__cell) {
+  background-color: var(--el-table-header-bg-color);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+:deep(.el-empty) {
+  padding: 40px 0;
+}
+
 .import-stats {
   display: flex;
   gap: 20px;
-  padding: 8px 12px;
-  background-color: #f5f7fa;
-  border-radius: 4px;
+  padding: 10px 14px;
+  background-color: var(--bg-light);
+  border-radius: var(--radius-sm);
 }
 .import-stats .success {
-  color: #67c23a;
+  color: var(--color-success);
+  font-weight: 600;
 }
 .import-stats .error {
-  color: #f56c6c;
+  color: var(--color-danger);
+  font-weight: 600;
 }
 .import-result-detail {
   display: flex;
   justify-content: center;
   gap: 20px;
   margin-top: 16px;
+}
+
+/* Step indicator refinements */
+:deep(.el-step__title) {
+  font-size: var(--font-size-sm);
 }
 </style>

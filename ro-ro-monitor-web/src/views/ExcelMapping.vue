@@ -5,20 +5,6 @@
         <div class="card-header">
           <span>Excel 字段映射配置</span>
           <div class="header-actions">
-            <el-select
-              v-model="selectedBrandId"
-              placeholder="选择品牌"
-              @change="handleBrandChange"
-              style="width: 200px; margin-right: 10px"
-            >
-              <el-option
-                v-for="brand in brandList"
-                :key="brand.id"
-                :label="brand.brandName"
-                :value="brand.id"
-              />
-              <el-option label="默认规则" :value="0" />
-            </el-select>
             <el-button type="primary" @click="handleCopy">
               <el-icon><CopyDocument /></el-icon>
               从其他品牌复制
@@ -31,14 +17,50 @@
         </div>
       </template>
 
+      <!-- 品牌筛选 -->
+      <div class="filter-bar">
+        <el-select
+          v-model="selectedBrandId"
+          placeholder="选择品牌"
+          @change="handleBrandChange"
+          style="width: 240px"
+        >
+          <el-option
+            v-for="brand in brandList"
+            :key="brand.id"
+            :label="brand.brandName"
+            :value="brand.id"
+          />
+          <el-option label="默认规则" :value="0" />
+        </el-select>
+        <span class="filter-hint">选择品牌后配置对应的字段映射规则</span>
+      </div>
+
       <el-table :data="mappingList" border stripe v-loading="loading">
-        <el-table-column prop="standardFieldName" label="标准字段" width="180" />
-        <el-table-column prop="standardField" label="字段编码" width="180" />
-        <el-table-column label="Excel表头名称（多个用逗号分隔）" min-width="300">
+        <el-table-column prop="standardFieldName" label="标准字段" width="160" />
+        <el-table-column prop="standardField" label="字段编码" width="140" />
+        <el-table-column label="字段类型" width="110" align="center">
+          <template #default="{ row }">
+            <el-tag
+              v-if="isDateField(row.standardField)"
+              type="warning"
+              effect="plain"
+              size="small"
+            >
+              <el-icon style="vertical-align: -2px; margin-right: 2px"><Clock /></el-icon>
+              日期类型
+            </el-tag>
+            <el-tag v-else type="info" effect="plain" size="small">
+              文本类型
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="Excel表头名称（多个用逗号分隔）" min-width="340">
           <template #default="{ row }">
             <el-input
               v-model="row.excelColumnNames"
               placeholder="如：车架号,VIN,vin"
+              :class="{ 'field-input--date': isDateField(row.standardField) }"
             />
           </template>
         </el-table-column>
@@ -61,10 +83,10 @@
               <el-option label="MM/dd/yyyy HH:mm" value="MM/dd/yyyy HH:mm" />
               <el-option label="MM/dd/yyyy" value="MM/dd/yyyy" />
             </el-select>
-            <span v-else style="color: #999">—</span>
+            <span v-else class="date-placeholder">—</span>
           </template>
         </el-table-column>
-        <el-table-column label="必填" width="80" align="center">
+        <el-table-column label="必填" width="70" align="center">
           <template #default="{ row }">
             <el-checkbox v-model="row.isRequired" :true-value="1" :false-value="0" />
           </template>
@@ -78,7 +100,7 @@
     </el-card>
 
     <!-- 复制配置对话框 -->
-    <el-dialog v-model="copyDialogVisible" title="从其他品牌复制配置" width="400px">
+    <el-dialog v-model="copyDialogVisible" title="从其他品牌复制配置" width="420px">
       <el-form label-width="80px">
         <el-form-item label="源品牌">
           <el-select v-model="copySourceBrandId" placeholder="选择源品牌" style="width: 100%">
@@ -103,7 +125,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { CopyDocument, Check } from '@element-plus/icons-vue'
+import { CopyDocument, Check, Clock } from '@element-plus/icons-vue'
 import { getBrandList } from '@/api/brand'
 import { getStandardFields, getMappingByBrand, batchSaveMapping, copyMapping } from '@/api/excelMapping'
 
@@ -131,7 +153,6 @@ const isDateField = (fieldName) => {
 }
 
 // 初始化映射列表（基于标准字段）
-// 初始化映射列表（基于标准字段）
 const initMappingList = (existingMappings = []) => {
   const mappingMap = {}
   existingMappings.forEach(m => {
@@ -153,7 +174,7 @@ const initMappingList = (existingMappings = []) => {
       standardField: field.fieldName,
       standardFieldName: field.fieldLabel,
       excelColumnNames: existing?.excelColumnNames || '',
-      dateFormat: existing?.dateFormat || defaultDateFormat,  // 默认时间格式
+      dateFormat: existing?.dateFormat || defaultDateFormat,
       isRequired: existing?.isRequired ?? 1,
       defaultValue: existing?.defaultValue || '',
       sortOrder: existing?.sortOrder || 0,
@@ -271,13 +292,15 @@ onMounted(() => {
 .excel-mapping {
   height: 100%;
 }
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+
+/* ── filter hint text ── */
+.filter-hint {
+  font-size: var(--font-size-sm);
+  color: var(--text-muted);
 }
-.header-actions {
-  display: flex;
-  align-items: center;
+
+/* ── field type badges ── */
+.field-input--date :deep(.el-input__wrapper) {
+  background-color: var(--color-warning-bg);
 }
 </style>

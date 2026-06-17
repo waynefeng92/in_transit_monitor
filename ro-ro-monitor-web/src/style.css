@@ -33,6 +33,52 @@
 
   --card-gradient: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 251, 255, 0.98));
   --card-border: 1px solid #dbe7f5;
+
+  --font-size-xs: 12px;
+  --font-size-sm: 13px;
+  --font-size-base: 15px;
+  --font-size-md: 17px;
+  --font-size-lg: 20px;
+  --font-size-xl: 24px;
+  --font-size-xxl: 44px;
+
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  --spacing-xxl: 48px;
+
+  --transition-fast: 0.15s ease;
+  --transition-normal: 0.3s ease;
+  --transition-slow: 0.5s ease;
+
+  --chart-color-1: #1d72f3;
+  --chart-color-2: #67c23a;
+  --chart-color-3: #e6a23c;
+  --chart-color-4: #f56c6c;
+  --chart-color-5: #909399;
+  --chart-color-6: #409eff;
+  --chart-color-7: #3884f7;
+
+  --color-primary-lightest: #dbe7f5;
+  --color-primary-bg: #e9f0f8;
+
+  --color-body: #22324d;
+  --color-accent: #2d78d6;
+  --color-grey: #999999;
+  --color-divider: #e8eef6;
+  --color-connector: #b8c7db;
+  --color-border-focus: #d7e4f4;
+  --color-border-light: #b7d9f5;
+  --bg-light: #f5f7fa;
+  --text-subtle: #71839c;
+  --color-success-bg: #f3fbf7;
+  --color-warning-bg: #fff8ef;
+  --color-danger-bg: #fff4f4;
+  --color-info-bg: #f3f8ff;
+  --color-info-light: #f0f9ff;
+  --color-info-lighter: #e8f4fd;
 }
 
 /* ---------- Element Plus Theme ---------- */
@@ -303,10 +349,12 @@ body {
 }
 
 .chart-card {
-  border-radius: 18px;
-  border: 1px solid #e9f0f8;
-  background: rgba(255, 255, 255, 0.72);
+  border-radius: var(--radius-xl);
+  border: var(--card-border);
+  background: var(--card-gradient);
+  box-shadow: var(--shadow-card);
   padding: 18px 18px 16px;
+  overflow: hidden;
 }
 
 .chart-card__header {

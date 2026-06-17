@@ -64,6 +64,15 @@ export function previewImport(file) {
   })
 }
 
+// 批量编辑
+export function batchUpdateRoutes(data) {
+  return request({
+    url: '/route/batch',
+    method: 'put',
+    data
+  })
+}
+
 // 批量导入
 export function batchImport(data) {
   return request({

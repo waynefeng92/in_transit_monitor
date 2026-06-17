@@ -37,7 +37,7 @@ let chartInstance = null
 const initChart = () => {
   if (!chartRef.value) return
   
-  chartInstance = echarts.init(chartRef.value)
+  chartInstance = echarts.init(chartRef.value, 'roro')
   updateChart()
   
   // 监听窗口大小变化
@@ -75,7 +75,7 @@ const updateChart = () => {
       barWidth: 54,
       barCategoryGap: '34%',
       itemStyle: {
-        borderRadius: [6, 6, 6, 6]
+        borderRadius: [2, 2, 2, 2]
       },
       label: {
         show: true,

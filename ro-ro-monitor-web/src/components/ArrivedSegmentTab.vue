@@ -55,9 +55,9 @@ const SEGMENT_LABEL_MAP = {
 }
 
 const BUCKET_CONFIG = [
-  { key: 'efficient', label: '高效', color: '#67c23a' },
-  { key: 'normal', label: '正常', color: '#e6a23c' },
-  { key: 'delayed', label: '延迟', color: '#f56c6c' }
+      { key: 'efficient', label: '高效', color: '#67c23a' },
+      { key: 'normal', label: '正常', color: '#409eff' },
+      { key: 'delayed', label: '延迟', color: '#f56c6c' }
 ]
 
 const chartRef = ref(null)
@@ -124,7 +124,7 @@ const buildOption = () => {
     barWidth: 44,
     barCategoryGap: '30%',
     itemStyle: {
-      borderRadius: [4, 4, 4, 4]
+        borderRadius: [2, 2, 2, 2]
     },
     label: {
       show: true,
@@ -221,7 +221,7 @@ const buildOption = () => {
 
 const initChart = () => {
   if (!chartRef.value) return
-  chartInstance = echarts.init(chartRef.value)
+  chartInstance = echarts.init(chartRef.value, 'roro')
   updateChart()
   window.addEventListener('resize', handleResize)
 }

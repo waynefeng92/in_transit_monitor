@@ -22,7 +22,8 @@
         title="配置说明"
         type="info"
         :closable="false"
-        style="margin-bottom: 20px"
+        show-icon
+        class="config-alert"
       >
         <template #default>
           将标准OTD设置为 <strong>0</strong> 可跳过该阶段的监控（适用于无法获取该阶段时间的场景）。
@@ -36,7 +37,7 @@
           placeholder="按品牌筛选"
           clearable
           @change="handleBrandChange"
-          style="width: 200px; margin-right: 10px"
+          style="width: 200px"
         >
           <el-option
             v-for="brand in brandList"
@@ -60,113 +61,182 @@
         </el-select>
       </div>
 
-      <!-- 配置表单 -->
+      <!-- 配置表单 — 7段卡片分组 -->
       <el-form
         v-if="selectedRouteId"
         ref="formRef"
         :model="formData"
-        label-width="200px"
+        label-width="0"
         class="config-form"
       >
-        <el-divider content-position="left">标准OTD时效（小时）</el-divider>
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="未出库 → 集港在途">
-              <el-input-number v-model="formData.notDepartedOtd" :min="0" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="未出库预警时效">
-              <el-input-number v-model="formData.notDepartedWarn" :min="0" />
-            </el-form-item>
-          </el-col>
-        </el-row>
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="集港在途 → 已集港待装船">
-              <el-input-number v-model="formData.toPortOtd" :min="0" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="集港在途预警时效">
-              <el-input-number v-model="formData.toPortWarn" :min="0" />
-            </el-form-item>
-          </el-col>
-        </el-row>
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="已集港待装船 → 水运在途">
-              <el-input-number v-model="formData.atPortWaitOtd" :min="0" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="已集港待装船预警时效">
-              <el-input-number v-model="formData.atPortWaitWarn" :min="0" />
-            </el-form-item>
-          </el-col>
-        </el-row>
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="水运在途 → 已到港待卸船">
-              <el-input-number v-model="formData.onSeaOtd" :min="0" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="水运在途预警时效">
-              <el-input-number v-model="formData.onSeaWarn" :min="0" />
-            </el-form-item>
-          </el-col>
-        </el-row>
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="已到港待卸船 → 已卸船待分拨">
-              <el-input-number v-model="formData.atDestWaitOtd" :min="0" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="已到港待卸船预警时效">
-              <el-input-number v-model="formData.atDestWaitWarn" :min="0" />
-            </el-form-item>
-          </el-col>
-        </el-row>
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="已卸船待分拨 → 分拨在途">
-              <el-input-number v-model="formData.unloadWaitDispatchOtd" :min="0" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="已卸船待分拨预警时效">
-              <el-input-number v-model="formData.unloadWaitDispatchWarn" :min="0" />
-            </el-form-item>
-          </el-col>
-        </el-row>
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="分拨在途 → 已到达">
-              <el-input-number v-model="formData.dispatchingOtd" :min="0" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="分拨在途预警时效">
-              <el-input-number v-model="formData.dispatchingWarn" :min="0" />
-            </el-form-item>
-          </el-col>
-        </el-row>
+        <div class="segment-grid">
+          <!-- 1. 未出库 → 集港在途 -->
+          <div class="segment-card">
+            <div class="segment-card__header">
+              <span class="segment-index">01</span>
+              <span class="segment-title">未出库 → 集港在途</span>
+              <div class="segment-badges">
+                <el-tag size="small" class="badge-otd">标准OTD</el-tag>
+                <el-tag size="small" class="badge-warn">预警</el-tag>
+              </div>
+            </div>
+            <div class="segment-card__body">
+              <div class="segment-field segment-field--otd">
+                <label class="field-label">标准OTD（小时）</label>
+                <el-input-number v-model="formData.notDepartedOtd" :min="0" :step="0.5" :precision="1" controls-position="right" />
+              </div>
+              <div class="segment-field segment-field--warn">
+                <label class="field-label">预警时效（小时）</label>
+                <el-input-number v-model="formData.notDepartedWarn" :min="0" :step="0.5" :precision="1" controls-position="right" />
+              </div>
+            </div>
+          </div>
 
-        <el-form-item style="margin-top: 30px">
-          <el-button type="primary" @click="handleSubmit" :loading="submitting">
+          <!-- 2. 集港在途 → 已集港待装船 -->
+          <div class="segment-card">
+            <div class="segment-card__header">
+              <span class="segment-index">02</span>
+              <span class="segment-title">集港在途 → 已集港待装船</span>
+              <div class="segment-badges">
+                <el-tag size="small" class="badge-otd">标准OTD</el-tag>
+                <el-tag size="small" class="badge-warn">预警</el-tag>
+              </div>
+            </div>
+            <div class="segment-card__body">
+              <div class="segment-field segment-field--otd">
+                <label class="field-label">标准OTD（小时）</label>
+                <el-input-number v-model="formData.toPortOtd" :min="0" :step="0.5" :precision="1" controls-position="right" />
+              </div>
+              <div class="segment-field segment-field--warn">
+                <label class="field-label">预警时效（小时）</label>
+                <el-input-number v-model="formData.toPortWarn" :min="0" :step="0.5" :precision="1" controls-position="right" />
+              </div>
+            </div>
+          </div>
+
+          <!-- 3. 已集港待装船 → 水运在途 -->
+          <div class="segment-card">
+            <div class="segment-card__header">
+              <span class="segment-index">03</span>
+              <span class="segment-title">已集港待装船 → 水运在途</span>
+              <div class="segment-badges">
+                <el-tag size="small" class="badge-otd">标准OTD</el-tag>
+                <el-tag size="small" class="badge-warn">预警</el-tag>
+              </div>
+            </div>
+            <div class="segment-card__body">
+              <div class="segment-field segment-field--otd">
+                <label class="field-label">标准OTD（小时）</label>
+                <el-input-number v-model="formData.atPortWaitOtd" :min="0" :step="0.5" :precision="1" controls-position="right" />
+              </div>
+              <div class="segment-field segment-field--warn">
+                <label class="field-label">预警时效（小时）</label>
+                <el-input-number v-model="formData.atPortWaitWarn" :min="0" :step="0.5" :precision="1" controls-position="right" />
+              </div>
+            </div>
+          </div>
+
+          <!-- 4. 水运在途 → 已到港待卸船 -->
+          <div class="segment-card">
+            <div class="segment-card__header">
+              <span class="segment-index">04</span>
+              <span class="segment-title">水运在途 → 已到港待卸船</span>
+              <div class="segment-badges">
+                <el-tag size="small" class="badge-otd">标准OTD</el-tag>
+                <el-tag size="small" class="badge-warn">预警</el-tag>
+              </div>
+            </div>
+            <div class="segment-card__body">
+              <div class="segment-field segment-field--otd">
+                <label class="field-label">标准OTD（小时）</label>
+                <el-input-number v-model="formData.onSeaOtd" :min="0" :step="0.5" :precision="1" controls-position="right" />
+              </div>
+              <div class="segment-field segment-field--warn">
+                <label class="field-label">预警时效（小时）</label>
+                <el-input-number v-model="formData.onSeaWarn" :min="0" :step="0.5" :precision="1" controls-position="right" />
+              </div>
+            </div>
+          </div>
+
+          <!-- 5. 已到港待卸船 → 已卸船待分拨 -->
+          <div class="segment-card">
+            <div class="segment-card__header">
+              <span class="segment-index">05</span>
+              <span class="segment-title">已到港待卸船 → 已卸船待分拨</span>
+              <div class="segment-badges">
+                <el-tag size="small" class="badge-otd">标准OTD</el-tag>
+                <el-tag size="small" class="badge-warn">预警</el-tag>
+              </div>
+            </div>
+            <div class="segment-card__body">
+              <div class="segment-field segment-field--otd">
+                <label class="field-label">标准OTD（小时）</label>
+                <el-input-number v-model="formData.atDestWaitOtd" :min="0" :step="0.5" :precision="1" controls-position="right" />
+              </div>
+              <div class="segment-field segment-field--warn">
+                <label class="field-label">预警时效（小时）</label>
+                <el-input-number v-model="formData.atDestWaitWarn" :min="0" :step="0.5" :precision="1" controls-position="right" />
+              </div>
+            </div>
+          </div>
+
+          <!-- 6. 已卸船待分拨 → 分拨在途 -->
+          <div class="segment-card">
+            <div class="segment-card__header">
+              <span class="segment-index">06</span>
+              <span class="segment-title">已卸船待分拨 → 分拨在途</span>
+              <div class="segment-badges">
+                <el-tag size="small" class="badge-otd">标准OTD</el-tag>
+                <el-tag size="small" class="badge-warn">预警</el-tag>
+              </div>
+            </div>
+            <div class="segment-card__body">
+              <div class="segment-field segment-field--otd">
+                <label class="field-label">标准OTD（小时）</label>
+                <el-input-number v-model="formData.unloadWaitDispatchOtd" :min="0" :step="0.5" :precision="1" controls-position="right" />
+              </div>
+              <div class="segment-field segment-field--warn">
+                <label class="field-label">预警时效（小时）</label>
+                <el-input-number v-model="formData.unloadWaitDispatchWarn" :min="0" :step="0.5" :precision="1" controls-position="right" />
+              </div>
+            </div>
+          </div>
+
+          <!-- 7. 分拨在途 → 已到达 -->
+          <div class="segment-card">
+            <div class="segment-card__header">
+              <span class="segment-index">07</span>
+              <span class="segment-title">分拨在途 → 已到达</span>
+              <div class="segment-badges">
+                <el-tag size="small" class="badge-otd">标准OTD</el-tag>
+                <el-tag size="small" class="badge-warn">预警</el-tag>
+              </div>
+            </div>
+            <div class="segment-card__body">
+              <div class="segment-field segment-field--otd">
+                <label class="field-label">标准OTD（小时）</label>
+                <el-input-number v-model="formData.dispatchingOtd" :min="0" :step="0.5" :precision="1" controls-position="right" />
+              </div>
+              <div class="segment-field segment-field--warn">
+                <label class="field-label">预警时效（小时）</label>
+                <el-input-number v-model="formData.dispatchingWarn" :min="0" :step="0.5" :precision="1" controls-position="right" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <el-button type="primary" size="large" @click="handleSubmit" :loading="submitting">
             保存配置
           </el-button>
-        </el-form-item>
+        </div>
       </el-form>
 
       <el-empty v-else description="请选择一条线路" />
     </el-card>
 
-    <!-- 批量导入对话框 -->
+    <!-- 批量导入对话框（保持不变） -->
     <el-dialog v-model="importDialogVisible" title="批量导入OTD配置" width="900px" @close="resetImport">
-      <!-- 步骤1：上传文件 -->
       <div v-if="importStep === 1">
         <el-alert type="info" :closable="false" style="margin-bottom: 16px">
           <template #title>
@@ -194,7 +264,6 @@
         </el-upload>
       </div>
 
-      <!-- 步骤2：预览数据 -->
       <div v-else-if="importStep === 2">
         <el-alert type="info" :closable="false" style="margin-bottom: 16px">
           共 {{ importPreviewData.length }} 条配置，确认无误后点击"开始导入"
@@ -242,11 +311,10 @@
         </el-table>
       </div>
 
-      <!-- 步骤3：导入结果 -->
       <div v-else-if="importStep === 3">
         <el-result
           :icon="importResult.failCount === 0 ? 'success' : 'warning'"
-          :title="`导入完成`"
+          title="导入完成"
         >
           <template #subtitle>
             <div class="import-result-detail">
@@ -521,7 +589,6 @@ const handleImport = async () => {
 // 完成导入
 const handleImportFinish = () => {
   importDialogVisible.value = false
-  // 刷新当前选中线路的配置
   if (selectedRouteId.value) {
     handleRouteChange(selectedRouteId.value)
   }
@@ -538,14 +605,164 @@ onMounted(() => {
 .otd-config {
   height: 100%;
 }
-.config-form {
-  max-width: 900px;
-  margin-top: 20px;
+
+/* ── Alert styling ── */
+.config-alert {
+  margin-bottom: 20px;
 }
+
+/* ── Segment Grid ── */
+.segment-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 4px;
+}
+
+/* ── Segment Card ── */
+.segment-card {
+  border: var(--card-border);
+  border-radius: var(--radius-md);
+  background: var(--card-gradient);
+  box-shadow: 0 2px 8px rgba(26, 65, 122, 0.06);
+  overflow: hidden;
+  transition: box-shadow var(--transition-fast);
+}
+
+.segment-card:hover {
+  box-shadow: 0 4px 14px rgba(26, 65, 122, 0.10);
+}
+
+.segment-card__header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 18px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(248,251,255,0.98));
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.segment-index {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: var(--el-color-primary-light-9);
+  color: var(--color-primary);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  line-height: 1;
+}
+
+.segment-title {
+  flex: 1;
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.segment-badges {
+  display: flex;
+  gap: 6px;
+}
+
+.badge-otd {
+  --el-tag-bg-color: var(--color-primary-bg);
+  --el-tag-border-color: var(--color-primary-lightest);
+  --el-tag-text-color: var(--color-primary);
+  --el-tag-hover-color: var(--color-primary);
+}
+
+.badge-warn {
+  --el-tag-bg-color: var(--color-warning-bg);
+  --el-tag-border-color: #f5e6c8;
+  --el-tag-text-color: var(--color-warning);
+  --el-tag-hover-color: var(--color-warning);
+}
+
+/* ── Field row ── */
+.segment-card__body {
+  display: flex;
+  gap: 0;
+  padding: 16px 18px;
+}
+
+.segment-field {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.segment-field + .segment-field {
+  border-left: 1px solid var(--color-divider);
+  padding-left: 18px;
+  margin-left: 18px;
+}
+
+.field-label {
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+/* OTD field — primary accent */
+.segment-field--otd .field-label {
+  color: var(--color-primary);
+}
+
+.segment-field--otd :deep(.el-input-number) {
+  width: 100%;
+}
+
+.segment-field--otd :deep(.el-input-number .el-input__wrapper) {
+  background-color: var(--color-info-bg);
+}
+
+/* Warn field — warning accent */
+.segment-field--warn .field-label {
+  color: var(--color-warning);
+}
+
+.segment-field--warn :deep(.el-input-number) {
+  width: 100%;
+}
+
+.segment-field--warn :deep(.el-input-number .el-input__wrapper) {
+  background-color: var(--color-warning-bg);
+}
+
+/* ── Submit button ── */
+.form-actions {
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid var(--color-divider);
+  text-align: center;
+}
+
+/* ── Import result ── */
 .import-result-detail {
   display: flex;
   justify-content: center;
   gap: 20px;
   margin-top: 16px;
+}
+
+/* ── Responsive: stack fields on narrow viewports ── */
+@media (max-width: 768px) {
+  .segment-card__body {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .segment-field + .segment-field {
+    border-left: none;
+    padding-left: 0;
+    margin-left: 0;
+    padding-top: 12px;
+    border-top: 1px solid var(--color-divider);
+  }
 }
 </style>

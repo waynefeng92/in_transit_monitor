@@ -3,7 +3,12 @@
     <el-card>
       <template #header>
         <div class="card-header">
-          <span>港口管理</span>
+          <span>
+            港口管理
+            <el-tag size="small" type="info" effect="plain" style="margin-left: 10px; vertical-align: middle">
+              {{ filteredTableData.length }}
+            </el-tag>
+          </span>
           <div class="header-actions">
             <el-switch
               v-model="showDisabled"
@@ -20,7 +25,21 @@
         </div>
       </template>
 
-      <el-table :data="tableData" border stripe v-loading="loading">
+      <!-- 搜索筛选 -->
+      <div class="filter-bar">
+        <el-input
+          v-model="portSearch"
+          placeholder="搜索港口名称..."
+          clearable
+          style="width: 260px"
+        >
+          <template #prefix>
+            <el-icon><Search /></el-icon>
+          </template>
+        </el-input>
+      </div>
+
+      <el-table :data="filteredTableData" border stripe v-loading="loading">
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="portName" label="港口名称" width="150" />
         <el-table-column prop="portCode" label="港口代码" width="120">
@@ -64,6 +83,8 @@
           </template>
         </el-table-column>
       </el-table>
+
+      <el-empty v-if="!loading && filteredTableData.length === 0" description="暂无港口数据" />
     </el-card>
 
     <!-- 新增/编辑对话框 -->
@@ -105,12 +126,22 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus } from '@element-plus/icons-vue'
+import { Plus, Search } from '@element-plus/icons-vue'
 import { getPortList, savePort, updatePort, deletePort } from '@/api/port'
 
 const tableData = ref([])
 const loading = ref(false)
 const showDisabled = ref(false)
+
+// 港口名称搜索
+const portSearch = ref('')
+const filteredTableData = computed(() => {
+  const kw = portSearch.value?.toLowerCase().trim()
+  if (!kw) return tableData.value
+  return tableData.value.filter(item =>
+    item.portName?.toLowerCase().includes(kw)
+  )
+})
 
 const dialogVisible = ref(false)
 const dialogTitle = computed(() => formData.id ? '编辑港口' : '新增港口')
@@ -224,5 +255,24 @@ onMounted(() => {
 <style scoped>
 .port-manage {
   height: 100%;
+}
+
+.filter-bar {
+  margin-bottom: 18px;
+}
+
+.el-table {
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.el-table :deep(th.el-table__cell) {
+  background-color: var(--el-table-header-bg-color);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+:deep(.el-empty) {
+  padding: 40px 0;
 }
 </style>

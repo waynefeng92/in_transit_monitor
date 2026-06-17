@@ -42,7 +42,7 @@ const yAxisMax = computed(() => {
 
 const initChart = () => {
   if (!chartRef.value || chartInstance) return
-  chartInstance = echarts.init(chartRef.value)
+  chartInstance = echarts.init(chartRef.value, 'roro')
   window.addEventListener('resize', handleResize)
 }
 
@@ -181,7 +181,7 @@ const updateChart = () => {
             { offset: 0, color: '#409eff' },
             { offset: 1, color: '#1d72f3' }
           ]),
-          borderRadius: [6, 6, 0, 0]
+          borderRadius: [2, 2, 0, 0]
         },
         label: {
           show: true,

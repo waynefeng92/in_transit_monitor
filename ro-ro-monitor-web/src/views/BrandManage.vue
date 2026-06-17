@@ -3,7 +3,12 @@
     <el-card>
       <template #header>
         <div class="card-header">
-          <span>品牌管理</span>
+          <span>
+            品牌管理
+            <el-tag size="small" type="info" effect="plain" style="margin-left: 10px; vertical-align: middle">
+              {{ filteredTableData.length }}
+            </el-tag>
+          </span>
           <div class="header-actions">
             <el-switch
               v-model="showDisabled"
@@ -20,7 +25,21 @@
         </div>
       </template>
 
-      <el-table :data="tableData" border stripe v-loading="loading">
+      <!-- 搜索筛选 -->
+      <div class="filter-bar">
+        <el-input
+          v-model="wmiSearch"
+          placeholder="搜索 WMI 代码..."
+          clearable
+          style="width: 260px"
+        >
+          <template #prefix>
+            <el-icon><Search /></el-icon>
+          </template>
+        </el-input>
+      </div>
+
+      <el-table :data="filteredTableData" border stripe v-loading="loading">
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="brandName" label="品牌名称" width="150" />
         <el-table-column prop="wmiCode" label="WMI代码" width="120">
@@ -64,6 +83,8 @@
           </template>
         </el-table-column>
       </el-table>
+
+      <el-empty v-if="!loading && filteredTableData.length === 0" description="暂无品牌数据" />
     </el-card>
 
     <!-- 新增/编辑对话框 -->
@@ -105,7 +126,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus } from '@element-plus/icons-vue'
+import { Plus, Search } from '@element-plus/icons-vue'
 import { getBrandList, saveBrand, updateBrand, deleteBrand } from '@/api/brand'
 
 // 表格数据
@@ -114,6 +135,16 @@ const loading = ref(false)
 
 // 是否显示已禁用的品牌
 const showDisabled = ref(false)
+
+// WMI代码搜索
+const wmiSearch = ref('')
+const filteredTableData = computed(() => {
+  const kw = wmiSearch.value?.toLowerCase().trim()
+  if (!kw) return tableData.value
+  return tableData.value.filter(item =>
+    item.wmiCode?.toLowerCase().includes(kw)
+  )
+})
 
 // 对话框
 const dialogVisible = ref(false)
@@ -238,5 +269,24 @@ onMounted(() => {
 <style scoped>
 .brand-manage {
   height: 100%;
+}
+
+.filter-bar {
+  margin-bottom: 18px;
+}
+
+.el-table {
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.el-table :deep(th.el-table__cell) {
+  background-color: var(--el-table-header-bg-color);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+:deep(.el-empty) {
+  padding: 40px 0;
 }
 </style>
