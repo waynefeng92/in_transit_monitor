@@ -1,9 +1,22 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 
 const routes = [
   {
+    path: '/login',
+    name: 'Login',
+    component: () => import('@/views/Login.vue'),
+    meta: { title: '登录' }
+  },
+  {
     path: '/',
     redirect: '/dashboard/in-transit'
+  },
+  {
+    path: '/login',
+    name: 'Login',
+    component: () => import('@/views/Login.vue'),
+    meta: { title: '登录', requiresAuth: false }
   },
   {
     path: '/dashboard',
@@ -22,6 +35,12 @@ const routes = [
     meta: { title: '到达车辆监控' }
   },
   {
+    path: '/dashboard/history-replay',
+    name: 'HistoryReplay',
+    component: () => import('@/views/HistoryReplay.vue'),
+    meta: { title: '历史回放' }
+  },
+  {
     path: '/upload',
     name: 'Upload',
     component: () => import('@/views/Upload.vue'),
@@ -32,6 +51,12 @@ const routes = [
     name: 'ExcelMapping',
     component: () => import('@/views/ExcelMapping.vue'),
     meta: { title: 'Excel映射配置' }
+  },
+  {
+    path: '/order-manage',
+    name: 'OrderManage',
+    component: () => import('@/views/OrderManage.vue'),
+    meta: { title: '订单管理' }
   },
   // 基础信息维护
   {
@@ -57,12 +82,41 @@ const routes = [
     name: 'OtdConfig',
     component: () => import('@/views/OtdConfig.vue'),
     meta: { title: 'OTD时效配置' }
+  },
+  {
+    path: '/location-alias',
+    name: 'LocationAlias',
+    component: () => import('@/views/LocationAliasManage.vue'),
+    meta: { title: '地点别名' }
+  },
+  {
+    path: '/:pathMatch(.*)*',
+    name: 'NotFound',
+    component: () => import('@/components/NotFound.vue'),
+    meta: { title: '页面不存在', requiresAuth: false }
   }
 ]
 
 const router = createRouter({
   history: createWebHistory(),
   routes
+})
+
+router.beforeEach((to, from) => {
+  // Set page title
+  document.title = to.meta.title ? `${to.meta.title} - 在途车辆监控系统` : '在途车辆监控系统'
+
+  // Auth check
+  const authStore = useAuthStore()
+  // requiresAuth defaults to true if not set
+  const requiresAuth = to.meta.requiresAuth !== false
+
+  if (requiresAuth && !authStore.isAuthenticated) {
+    return { name: 'Login' }
+  }
+  if (to.name === 'Login' && authStore.isAuthenticated) {
+    return { path: '/dashboard/in-transit' }
+  }
 })
 
 export default router
