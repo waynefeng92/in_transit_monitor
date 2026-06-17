@@ -1,6 +1,7 @@
 package com.company.roro.service;
 
 import com.company.roro.dto.ExcelRowDTO;
+import com.company.roro.dto.ImportResultDTO;
 
 import java.util.List;
 
@@ -14,7 +15,7 @@ public interface TransitDataService {
      *
      * @param rows 解析后的数据行
      * @param batchId 批次号
-     * @return 成功处理的记录数
+     * @return 导入结果统计（总数、成功数、失败数、路线匹配数等）
      */
-    int processExcelData(List<ExcelRowDTO> rows, String batchId);
+    ImportResultDTO processExcelData(List<ExcelRowDTO> rows, String batchId);
 }

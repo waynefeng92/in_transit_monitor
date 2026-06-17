@@ -13,21 +13,21 @@ public class OtdConfigImportDTO {
 
     private String destCity;
 
-    // 7段标准OTD
-    private Integer notDepartedOtd;
-    private Integer toPortOtd;
-    private Integer atPortWaitOtd;
-    private Integer onSeaOtd;
-    private Integer atDestWaitOtd;
-    private Integer unloadWaitDispatchOtd;
-    private Integer dispatchingOtd;
+    // 7段标准OTD（单位：小时，支持小数）
+    private Double notDepartedOtd;
+    private Double toPortOtd;
+    private Double atPortWaitOtd;
+    private Double onSeaOtd;
+    private Double atDestWaitOtd;
+    private Double unloadWaitDispatchOtd;
+    private Double dispatchingOtd;
 
-    // 7段预警时效
-    private Integer notDepartedWarn;
-    private Integer toPortWarn;
-    private Integer atPortWaitWarn;
-    private Integer onSeaWarn;
-    private Integer atDestWaitWarn;
-    private Integer unloadWaitDispatchWarn;
-    private Integer dispatchingWarn;
+    // 7段预警时效（单位：小时，支持小数）
+    private Double notDepartedWarn;
+    private Double toPortWarn;
+    private Double atPortWaitWarn;
+    private Double onSeaWarn;
+    private Double atDestWaitWarn;
+    private Double unloadWaitDispatchWarn;
+    private Double dispatchingWarn;
 }

@@ -16,19 +16,21 @@ class ArrivedEfficiencyCalculatorTest {
 
     @Test
     void calculateEfficiencyNormal() {
-        Double efficiency = calculator.calculateEfficiency(now.minusHours(100), now);
+        // actual=100h, totalOtd=192h → efficiency=192/100*100=192%
+        RouteOtdConfig config = baseConfig();
+        Double efficiency = calculator.calculateEfficiency(now.minusHours(100), now, config);
         assertNotNull(efficiency);
-        assertEquals(100.0, efficiency, 0.01);
+        assertEquals(192.0, efficiency, 0.5);
     }
 
     @Test
     void calculateEfficiencyNullStart() {
-        assertNull(calculator.calculateEfficiency(null, now));
+        assertNull(calculator.calculateEfficiency(null, now, baseConfig()));
     }
 
     @Test
     void calculateEfficiencyNullEnd() {
-        assertNull(calculator.calculateEfficiency(now, null));
+        assertNull(calculator.calculateEfficiency(now, null, baseConfig()));
     }
 
     // ==================== determineBucket ====================
@@ -118,22 +120,22 @@ class ArrivedEfficiencyCalculatorTest {
 
     @Test
     void sectionBucketEfficient() {
-        // 80h elapsed, 108h cumulative OTD, warn=86.4h → EFFICIENT
-        String bucket = calculator.determineSectionBucket(now.minusHours(80), now, 108, 0.8);
+        // 80h=4800min elapsed, 108h=6480min cumulative OTD, warn=5184min → EFFICIENT
+        String bucket = calculator.determineSectionBucket(now.minusHours(80), now, 6480, 0.8);
         assertEquals("EFFICIENT", bucket);
     }
 
     @Test
     void sectionBucketNormal() {
-        // 100h elapsed, 108h cumulative, warn=86.4h → NORMAL
-        String bucket = calculator.determineSectionBucket(now.minusHours(100), now, 108, 0.8);
+        // 100h=6000min elapsed, 108h=6480min cumulative, warn=5184min → NORMAL
+        String bucket = calculator.determineSectionBucket(now.minusHours(100), now, 6480, 0.8);
         assertEquals("NORMAL", bucket);
     }
 
     @Test
     void sectionBucketDelayed() {
-        // 120h elapsed, 108h cumulative → DELAYED
-        String bucket = calculator.determineSectionBucket(now.minusHours(120), now, 108, 0.8);
+        // 120h=7200min elapsed, 108h=6480min cumulative → DELAYED
+        String bucket = calculator.determineSectionBucket(now.minusHours(120), now, 6480, 0.8);
         assertEquals("DELAYED", bucket);
     }
 
@@ -142,13 +144,13 @@ class ArrivedEfficiencyCalculatorTest {
     @Test
     void getTotalOtd() {
         RouteOtdConfig config = baseConfig();
-        long total = calculator.getTotalOtd(config);
-        assertEquals(192, total);
+        Double total = calculator.getTotalOtd(config);
+        assertEquals(192.0, total, 0.01);
     }
 
     @Test
     void getTotalOtdNullConfig() {
-        assertEquals(0, calculator.getTotalOtd(null));
+        assertEquals(0.0, calculator.getTotalOtd(null), 0.01);
     }
 
     // ==================== getSectionName ====================
@@ -171,9 +173,9 @@ class ArrivedEfficiencyCalculatorTest {
     @Test
     void getSectionCumulativeOtd() {
         RouteOtdConfig config = baseConfig();
-        assertEquals(108, calculator.getSectionCumulativeOtd(config, "前段")); // 48+12+48
-        assertEquals(60, calculator.getSectionCumulativeOtd(config, "中段"));  // 48+12
-        assertEquals(24, calculator.getSectionCumulativeOtd(config, "后段")); // 12+12
+        assertEquals(6480, calculator.getSectionCumulativeOtd(config, "前段")); // 108h*60
+        assertEquals(3600, calculator.getSectionCumulativeOtd(config, "中段")); // 60h*60
+        assertEquals(1440, calculator.getSectionCumulativeOtd(config, "后段")); // 24h*60
         assertEquals(0, calculator.getSectionCumulativeOtd(config, "未知段"));
         assertEquals(0, calculator.getSectionCumulativeOtd(null, "前段"));
     }
@@ -182,13 +184,13 @@ class ArrivedEfficiencyCalculatorTest {
 
     private RouteOtdConfig baseConfig() {
         RouteOtdConfig config = new RouteOtdConfig();
-        config.setNotDepartedOtd(48);
-        config.setToPortOtd(12);
-        config.setAtPortWaitOtd(48);
-        config.setOnSeaOtd(48);
-        config.setAtDestWaitOtd(12);
-        config.setUnloadWaitDispatchOtd(12);
-        config.setDispatchingOtd(12);
+        config.setNotDepartedOtd(48.0);
+        config.setToPortOtd(12.0);
+        config.setAtPortWaitOtd(48.0);
+        config.setOnSeaOtd(48.0);
+        config.setAtDestWaitOtd(12.0);
+        config.setUnloadWaitDispatchOtd(12.0);
+        config.setDispatchingOtd(12.0);
         return config;
     }
 }

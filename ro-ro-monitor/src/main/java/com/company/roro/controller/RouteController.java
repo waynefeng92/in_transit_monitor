@@ -12,6 +12,7 @@ import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+import org.apache.poi.openxml4j.util.ZipSecureFile;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.servlet.http.HttpServletResponse;
@@ -47,17 +48,17 @@ public class RouteController {
      * @return 线路列表
      */
     @GetMapping("/list")
-    public List<RouteDict> list(
+    public Result<List<RouteDict>> list(
             @RequestParam(required = false, defaultValue = "false") Boolean includeDisabled) {
         if (includeDisabled) {
-            return routeDictService.lambdaQuery()
+            return Result.success(routeDictService.lambdaQuery()
                     .orderByAsc(RouteDict::getId)
-                    .list();
+                    .list());
         } else {
-            return routeDictService.lambdaQuery()
+            return Result.success(routeDictService.lambdaQuery()
                     .eq(RouteDict::getIsActive, 1)
                     .orderByAsc(RouteDict::getId)
-                    .list();
+                    .list());
         }
     }
 
@@ -68,12 +69,12 @@ public class RouteController {
      * @return 该品牌下的所有激活线路
      */
     @GetMapping("/list/{brandId}")
-    public List<RouteDict> listByBrand(
+    public Result<List<RouteDict>> listByBrand(
             @PathVariable Integer brandId) {
-        return routeDictService.lambdaQuery()
+        return Result.success(routeDictService.lambdaQuery()
                 .eq(RouteDict::getBrandId, brandId)
                 .eq(RouteDict::getIsActive, 1)
-                .list();
+                .list());
     }
 
     /**
@@ -83,9 +84,9 @@ public class RouteController {
      * @return 线路信息
      */
     @GetMapping("/{id}")
-    public RouteDict getById(
+    public Result<RouteDict> getById(
             @PathVariable Integer id) {
-        return routeDictService.getById(id);
+        return Result.success(routeDictService.getById(id));
     }
 
     /**
@@ -95,9 +96,9 @@ public class RouteController {
      * @return 是否成功
      */
     @PostMapping
-    public boolean save(
+    public Result<Boolean> save(
             @RequestBody RouteDict routeDict) {
-        return routeDictService.save(routeDict);
+        return Result.success(routeDictService.save(routeDict));
     }
 
     /**
@@ -107,9 +108,43 @@ public class RouteController {
      * @return 是否成功
      */
     @PutMapping
-    public boolean update(
+    public Result<Boolean> update(
             @RequestBody RouteDict routeDict) {
-        return routeDictService.updateById(routeDict);
+        return Result.success(routeDictService.updateById(routeDict));
+    }
+
+    /**
+     * 批量编辑线路
+     *
+     * @param routes 线路列表（必须包含ID）
+     * @return 更新结果，包含成功/失败统计
+     */
+    @PutMapping("/batch")
+    public Result<Map<String, Object>> batchUpdate(@RequestBody List<RouteDict> routes) {
+        int success = 0;
+        int fail = 0;
+        List<String> errors = new ArrayList<>();
+
+        for (RouteDict route : routes) {
+            try {
+                if (route.getId() == null) {
+                    fail++;
+                    errors.add("缺少ID");
+                    continue;
+                }
+                routeDictService.updateById(route);
+                success++;
+            } catch (Exception e) {
+                fail++;
+                errors.add("线路ID " + route.getId() + ": " + e.getMessage());
+            }
+        }
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("successCount", success);
+        result.put("failCount", fail);
+        result.put("errors", errors);
+        return Result.success(result);
     }
 
     /**
@@ -119,14 +154,14 @@ public class RouteController {
      * @return 是否成功
      */
     @DeleteMapping("/{id}")
-    public boolean delete(
+    public Result<Boolean> delete(
             @PathVariable Integer id) {
         RouteDict route = routeDictService.getById(id);
         if (route != null) {
             route.setIsActive(0);
-            return routeDictService.updateById(route);
+            return Result.success(routeDictService.updateById(route));
         }
-        return false;
+        return Result.success(false);
     }
 
     // ==================== 批量导入 ====================
@@ -199,7 +234,7 @@ public class RouteController {
      * 预览导入数据（带校验）
      */
     @PostMapping("/import/preview")
-    public RouteImportPreviewDTO previewImport(
+    public Result<RouteImportPreviewDTO> previewImport(
             @RequestParam("file") MultipartFile file) throws Exception {
 
         RouteImportPreviewDTO preview = new RouteImportPreviewDTO();
@@ -216,6 +251,7 @@ public class RouteController {
         Set<String> missingBrands = new HashSet<>();
         Set<String> missingPorts = new HashSet<>();
 
+        ZipSecureFile.setMinInflateRatio(0.001);
         try (Workbook workbook = WorkbookFactory.create(file.getInputStream())) {
             Sheet sheet = workbook.getSheetAt(0);
 
@@ -288,14 +324,14 @@ public class RouteController {
         preview.setCanImportCount((int) canImportCount);
         preview.setCannotImportCount(rows.size() - (int) canImportCount);
 
-        return preview;
+        return Result.success(preview);
     }
 
     /**
      * 批量导入线路
      */
     @PostMapping("/import/batch")
-    public RouteImportResultDTO batchImport(
+    public Result<RouteImportResultDTO> batchImport(
             @RequestBody List<RouteImportRequestDTO> importData) {
 
         RouteImportResultDTO result = new RouteImportResultDTO();
@@ -366,7 +402,7 @@ public class RouteController {
             }
         }
 
-        return result;
+        return Result.success(result);
     }
 
     /**

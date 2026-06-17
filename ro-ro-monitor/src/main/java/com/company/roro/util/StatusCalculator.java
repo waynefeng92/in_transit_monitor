@@ -93,17 +93,17 @@ public class StatusCalculator {
             return "NORMAL";
         }
 
-        // 计算已经过了多少小时
-        long elapsedHours = Duration.between(startTime, now).toHours();
+        // 计算已经过了多少分钟
+        long elapsedMinutes = Duration.between(startTime, now).toMinutes();
 
-        // 获取该状态的标准OTD时效和预警时效
-        Integer otdHours = getOtdHours(otdConfig, transportStatus);
-        Integer warnHours = getWarnHours(otdConfig, transportStatus);
+        // 获取该状态的标准OTD时效和预警时效（小时）
+        Double otdHours = getOtdHours(otdConfig, transportStatus);
+        Double warnHours = getWarnHours(otdConfig, transportStatus);
 
-        // 判断监控状态
-        if (otdHours != null && elapsedHours > otdHours) {
+        // 判断监控状态（使用分钟精度）
+        if (otdHours != null && elapsedMinutes > otdHours * 60) {
             return "OVERDUE";  // 超过标准OTD → 已超期
-        } else if (warnHours != null && elapsedHours > warnHours) {
+        } else if (warnHours != null && elapsedMinutes > warnHours * 60) {
             return "WARN";     // 超过预警时效 → 预警
         } else {
             return "NORMAL";   // 其他情况 → 正常
@@ -149,12 +149,12 @@ public class StatusCalculator {
             return "NORMAL";
         }
 
-        long elapsedHours = Duration.between(orderReleaseTime, endTime).toHours();
+        long elapsedMinutes = Duration.between(orderReleaseTime, endTime).toMinutes();
         long cumulativeWarn = (long) Math.floor(cumulativeOtd * warnRatio);
 
-        if (elapsedHours > cumulativeOtd) {
+        if (elapsedMinutes > cumulativeOtd) {
             return "OVERDUE";
-        } else if (elapsedHours > cumulativeWarn) {
+        } else if (elapsedMinutes > cumulativeWarn) {
             return "WARN";
         } else {
             return "NORMAL";
@@ -162,28 +162,41 @@ public class StatusCalculator {
     }
 
     private static long getCumulativeOtd(RouteOtdConfig config, String status) {
+        double sum;
         switch (status) {
             case "NOT_DEPARTED":
-                return config.getNotDepartedOtd();
+                sum = nvl(config.getNotDepartedOtd());
+                break;
             case "TO_PORT":
-                return config.getNotDepartedOtd() + config.getToPortOtd();
+                sum = nvl(config.getNotDepartedOtd()) + nvl(config.getToPortOtd());
+                break;
             case "AT_PORT_WAIT_SHIP":
-                return config.getNotDepartedOtd() + config.getToPortOtd() + config.getAtPortWaitOtd();
+                sum = nvl(config.getNotDepartedOtd()) + nvl(config.getToPortOtd()) + nvl(config.getAtPortWaitOtd());
+                break;
             case "ON_SEA":
-                return config.getNotDepartedOtd() + config.getToPortOtd() + config.getAtPortWaitOtd() + config.getOnSeaOtd();
+                sum = nvl(config.getNotDepartedOtd()) + nvl(config.getToPortOtd()) + nvl(config.getAtPortWaitOtd()) + nvl(config.getOnSeaOtd());
+                break;
             case "AT_DEST_WAIT_UNLOAD":
-                return config.getNotDepartedOtd() + config.getToPortOtd() + config.getAtPortWaitOtd() + config.getOnSeaOtd()
-                        + config.getAtDestWaitOtd();
+                sum = nvl(config.getNotDepartedOtd()) + nvl(config.getToPortOtd()) + nvl(config.getAtPortWaitOtd()) + nvl(config.getOnSeaOtd())
+                        + nvl(config.getAtDestWaitOtd());
+                break;
             case "UNLOADED_WAIT_DISPATCH":
-                return config.getNotDepartedOtd() + config.getToPortOtd() + config.getAtPortWaitOtd() + config.getOnSeaOtd()
-                        + config.getAtDestWaitOtd() + config.getUnloadWaitDispatchOtd();
+                sum = nvl(config.getNotDepartedOtd()) + nvl(config.getToPortOtd()) + nvl(config.getAtPortWaitOtd()) + nvl(config.getOnSeaOtd())
+                        + nvl(config.getAtDestWaitOtd()) + nvl(config.getUnloadWaitDispatchOtd());
+                break;
             case "DISPATCHING":
-                return config.getNotDepartedOtd() + config.getToPortOtd() + config.getAtPortWaitOtd() + config.getOnSeaOtd()
-                        + config.getAtDestWaitOtd() + config.getUnloadWaitDispatchOtd() + config.getDispatchingOtd();
+                sum = nvl(config.getNotDepartedOtd()) + nvl(config.getToPortOtd()) + nvl(config.getAtPortWaitOtd()) + nvl(config.getOnSeaOtd())
+                        + nvl(config.getAtDestWaitOtd()) + nvl(config.getUnloadWaitDispatchOtd()) + nvl(config.getDispatchingOtd());
+                break;
             default:
-                return config.getNotDepartedOtd() + config.getToPortOtd() + config.getAtPortWaitOtd() + config.getOnSeaOtd()
-                        + config.getAtDestWaitOtd() + config.getUnloadWaitDispatchOtd() + config.getDispatchingOtd();
+                sum = nvl(config.getNotDepartedOtd()) + nvl(config.getToPortOtd()) + nvl(config.getAtPortWaitOtd()) + nvl(config.getOnSeaOtd())
+                        + nvl(config.getAtDestWaitOtd()) + nvl(config.getUnloadWaitDispatchOtd()) + nvl(config.getDispatchingOtd());
         }
+        return (long)(sum * 60);
+    }
+
+    private static double nvl(Double val) {
+        return val != null ? val : 0.0;
     }
 
     /**
@@ -213,7 +226,7 @@ public class StatusCalculator {
     /**
      * 获取指定状态的标准 OTD 时效
      */
-    private static Integer getOtdHours(RouteOtdConfig config, String status) {
+    private static Double getOtdHours(RouteOtdConfig config, String status) {
         switch (status) {
             case "NOT_DEPARTED":
                 return config.getNotDepartedOtd();
@@ -237,7 +250,7 @@ public class StatusCalculator {
     /**
      * 获取指定状态的预警时效
      */
-    private static Integer getWarnHours(RouteOtdConfig config, String status) {
+    private static Double getWarnHours(RouteOtdConfig config, String status) {
         switch (status) {
             case "NOT_DEPARTED":
                 return config.getNotDepartedWarn();
@@ -307,12 +320,12 @@ public class StatusCalculator {
 
         long cumulativeOtd = getSectionCumulativeOtd(otdConfig, transportStatus);
 
-        long elapsedHours = Duration.between(startTime, now).toHours();
+        long elapsedMinutes = Duration.between(startTime, now).toMinutes();
         long cumulativeWarn = (long) Math.floor(cumulativeOtd * warnRatio);
 
-        if (elapsedHours > cumulativeOtd) {
+        if (elapsedMinutes > cumulativeOtd) {
             return "OVERDUE";
-        } else if (elapsedHours > cumulativeWarn) {
+        } else if (elapsedMinutes > cumulativeWarn) {
             return "WARN";
         } else {
             return "NORMAL";
@@ -390,26 +403,35 @@ public class StatusCalculator {
         if (status == null) {
             return 0;
         }
+        double sum;
         switch (status) {
             // 前段：从 NOT_DEPARTED 开始累加
             case "NOT_DEPARTED":
-                return config.getNotDepartedOtd();
+                sum = nvl(config.getNotDepartedOtd());
+                break;
             case "TO_PORT":
-                return config.getNotDepartedOtd() + config.getToPortOtd();
+                sum = nvl(config.getNotDepartedOtd()) + nvl(config.getToPortOtd());
+                break;
             case "AT_PORT_WAIT_SHIP":
-                return config.getNotDepartedOtd() + config.getToPortOtd() + config.getAtPortWaitOtd();
+                sum = nvl(config.getNotDepartedOtd()) + nvl(config.getToPortOtd()) + nvl(config.getAtPortWaitOtd());
+                break;
             // 中段：从 ON_SEA 开始累加
             case "ON_SEA":
-                return config.getOnSeaOtd();
+                sum = nvl(config.getOnSeaOtd());
+                break;
             case "AT_DEST_WAIT_UNLOAD":
-                return config.getOnSeaOtd() + config.getAtDestWaitOtd();
+                sum = nvl(config.getOnSeaOtd()) + nvl(config.getAtDestWaitOtd());
+                break;
             // 后段：从 UNLOADED_WAIT_DISPATCH 开始累加
             case "UNLOADED_WAIT_DISPATCH":
-                return config.getUnloadWaitDispatchOtd();
+                sum = nvl(config.getUnloadWaitDispatchOtd());
+                break;
             case "DISPATCHING":
-                return config.getUnloadWaitDispatchOtd() + config.getDispatchingOtd();
+                sum = nvl(config.getUnloadWaitDispatchOtd()) + nvl(config.getDispatchingOtd());
+                break;
             default:
                 return 0;
         }
+        return (long)(sum * 60);
     }
 }

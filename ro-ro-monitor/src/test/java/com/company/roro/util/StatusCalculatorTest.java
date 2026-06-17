@@ -403,20 +403,20 @@ class StatusCalculatorTest {
 
     private RouteOtdConfig baseConfig() {
         RouteOtdConfig config = new RouteOtdConfig();
-        config.setNotDepartedWarn(24);
-        config.setNotDepartedOtd(48);
-        config.setToPortWarn(10);
-        config.setToPortOtd(12);
-        config.setAtPortWaitWarn(40);
-        config.setAtPortWaitOtd(48);
-        config.setOnSeaWarn(40);
-        config.setOnSeaOtd(48);
-        config.setAtDestWaitWarn(10);
-        config.setAtDestWaitOtd(12);
-        config.setUnloadWaitDispatchWarn(10);
-        config.setUnloadWaitDispatchOtd(12);
-        config.setDispatchingWarn(10);
-        config.setDispatchingOtd(12);
+        config.setNotDepartedWarn(24.0);
+        config.setNotDepartedOtd(48.0);
+        config.setToPortWarn(10.0);
+        config.setToPortOtd(12.0);
+        config.setAtPortWaitWarn(40.0);
+        config.setAtPortWaitOtd(48.0);
+        config.setOnSeaWarn(40.0);
+        config.setOnSeaOtd(48.0);
+        config.setAtDestWaitWarn(10.0);
+        config.setAtDestWaitOtd(12.0);
+        config.setUnloadWaitDispatchWarn(10.0);
+        config.setUnloadWaitDispatchOtd(12.0);
+        config.setDispatchingWarn(10.0);
+        config.setDispatchingOtd(12.0);
         return config;
     }
 }

@@ -1,5 +1,6 @@
 package com.company.roro.controller;
 
+import com.company.roro.dto.Result;
 import com.company.roro.entity.TransportStatusDict;
 import com.company.roro.service.TransportStatusDictService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,9 +40,9 @@ public class TransportStatusController {
      * @return 按 display_order 排序的状态列表
      */
     @GetMapping("/list")
-    public List<TransportStatusDict> list() {
-        return transportStatusDictService.lambdaQuery()
+    public Result<List<TransportStatusDict>> list() {
+        return Result.success(transportStatusDictService.lambdaQuery()
                 .orderByAsc(TransportStatusDict::getDisplayOrder)
-                .list();
+                .list());
     }
 }

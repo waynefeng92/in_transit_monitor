@@ -56,16 +56,21 @@ public class ArrivedEfficiencyCalculator {
     // ==================== 整体效率计算 ====================
 
     /**
-     * 计算效率值（小时）
+     * 计算效率值（百分比）
      * @param orderReleaseTime 订单释放时间
      * @param arriveShopTime   到店时间
-     * @return 效率值（小时），如果任一时间为 null 则返回 null
+     * @param config           线路 OTD 配置
+     * @return 效率值（百分比），如果任一参数无效则返回 null
      */
-    public Double calculateEfficiency(LocalDateTime orderReleaseTime, LocalDateTime arriveShopTime) {
-        if (orderReleaseTime == null || arriveShopTime == null) {
+    public Double calculateEfficiency(LocalDateTime orderReleaseTime, LocalDateTime arriveShopTime, RouteOtdConfig config) {
+        if (orderReleaseTime == null || arriveShopTime == null || config == null) {
             return null;
         }
-        return (double) Duration.between(orderReleaseTime, arriveShopTime).toHours();
+        double actualHours = Duration.between(orderReleaseTime, arriveShopTime).toMinutes() / 60.0;
+        if (actualHours <= 0) return null;
+        double totalOtd = getTotalOtd(config);
+        if (totalOtd <= 0) return null;
+        return totalOtd / actualHours * 100.0;
     }
 
     /**
@@ -81,12 +86,12 @@ public class ArrivedEfficiencyCalculator {
         if (orderReleaseTime == null || arriveShopTime == null || config == null) {
             return null;
         }
-        long elapsed = Duration.between(orderReleaseTime, arriveShopTime).toHours();
-        long totalOtd = getTotalOtd(config);
-        long totalWarn = (long) Math.floor(totalOtd * warnRatio);
+        long elapsedMinutes = Duration.between(orderReleaseTime, arriveShopTime).toMinutes();
+        long totalOtdMinutes = (long)(getTotalOtd(config) * 60);
+        long totalWarnMinutes = (long) Math.floor(totalOtdMinutes * warnRatio);
 
-        if (elapsed <= totalWarn) return EFFICIENT;
-        if (elapsed <= totalOtd) return NORMAL;
+        if (elapsedMinutes <= totalWarnMinutes) return EFFICIENT;
+        if (elapsedMinutes <= totalOtdMinutes) return NORMAL;
         return DELAYED;
     }
 
@@ -105,9 +110,12 @@ public class ArrivedEfficiencyCalculator {
         if (startTime == null || endTime == null || otdHours == null) {
             return null;
         }
-        long elapsed = Duration.between(startTime, endTime).toHours();
-        if (warnHours != null && elapsed <= warnHours) return EFFICIENT;
-        if (elapsed <= otdHours) return NORMAL;
+        long elapsedMinutes = Duration.between(startTime, endTime).toMinutes();
+        long otdMinutes = (long)(otdHours * 60);
+        long warnMinutes = warnHours != null ? (long)(warnHours * 60) : otdMinutes;
+
+        if (elapsedMinutes <= warnMinutes) return EFFICIENT;
+        if (elapsedMinutes <= otdMinutes) return NORMAL;
         return DELAYED;
     }
 
@@ -124,11 +132,11 @@ public class ArrivedEfficiencyCalculator {
         if (startTime == null || endTime == null || cumulativeOtd <= 0) {
             return null;
         }
-        long elapsed = Duration.between(startTime, endTime).toHours();
-        long cumulativeWarn = (long) Math.floor(cumulativeOtd * warnRatio);
+        long elapsedMinutes = Duration.between(startTime, endTime).toMinutes();
+        long cumulativeWarnMinutes = (long) Math.floor(cumulativeOtd * warnRatio);
 
-        if (elapsed <= cumulativeWarn) return EFFICIENT;
-        if (elapsed <= cumulativeOtd) return NORMAL;
+        if (elapsedMinutes <= cumulativeWarnMinutes) return EFFICIENT;
+        if (elapsedMinutes <= cumulativeOtd) return NORMAL;
         return DELAYED;
     }
 
@@ -137,12 +145,16 @@ public class ArrivedEfficiencyCalculator {
     /**
      * 获取全链路总标准 OTD 时效
      */
-    public long getTotalOtd(RouteOtdConfig config) {
-        if (config == null) return 0;
-        return (long) config.getNotDepartedOtd() + config.getToPortOtd()
-                + config.getAtPortWaitOtd() + config.getOnSeaOtd()
-                + config.getAtDestWaitOtd() + config.getUnloadWaitDispatchOtd()
-                + config.getDispatchingOtd();
+    public Double getTotalOtd(RouteOtdConfig config) {
+        if (config == null) return 0.0;
+        double d1 = config.getNotDepartedOtd() != null ? config.getNotDepartedOtd() : 0.0;
+        double d2 = config.getToPortOtd() != null ? config.getToPortOtd() : 0.0;
+        double d3 = config.getAtPortWaitOtd() != null ? config.getAtPortWaitOtd() : 0.0;
+        double d4 = config.getOnSeaOtd() != null ? config.getOnSeaOtd() : 0.0;
+        double d5 = config.getAtDestWaitOtd() != null ? config.getAtDestWaitOtd() : 0.0;
+        double d6 = config.getUnloadWaitDispatchOtd() != null ? config.getUnloadWaitDispatchOtd() : 0.0;
+        double d7 = config.getDispatchingOtd() != null ? config.getDispatchingOtd() : 0.0;
+        return d1 + d2 + d3 + d4 + d5 + d6 + d7;
     }
 
     /**
@@ -150,16 +162,18 @@ public class ArrivedEfficiencyCalculator {
      */
     public Integer getSegmentOtd(RouteOtdConfig config, String segment) {
         if (config == null || segment == null) return null;
+        Double val;
         switch (segment) {
-            case "NOT_DEPARTED":             return config.getNotDepartedOtd();
-            case "TO_PORT":                  return config.getToPortOtd();
-            case "AT_PORT_WAIT_SHIP":        return config.getAtPortWaitOtd();
-            case "ON_SEA":                   return config.getOnSeaOtd();
-            case "AT_DEST_WAIT_UNLOAD":      return config.getAtDestWaitOtd();
-            case "UNLOADED_WAIT_DISPATCH":   return config.getUnloadWaitDispatchOtd();
-            case "DISPATCHING":              return config.getDispatchingOtd();
+            case "NOT_DEPARTED":             val = config.getNotDepartedOtd(); break;
+            case "TO_PORT":                  val = config.getToPortOtd(); break;
+            case "AT_PORT_WAIT_SHIP":        val = config.getAtPortWaitOtd(); break;
+            case "ON_SEA":                   val = config.getOnSeaOtd(); break;
+            case "AT_DEST_WAIT_UNLOAD":      val = config.getAtDestWaitOtd(); break;
+            case "UNLOADED_WAIT_DISPATCH":   val = config.getUnloadWaitDispatchOtd(); break;
+            case "DISPATCHING":              val = config.getDispatchingOtd(); break;
             default:                         return null;
         }
+        return val != null ? val.intValue() : null;
     }
 
     /**
@@ -167,16 +181,18 @@ public class ArrivedEfficiencyCalculator {
      */
     public Integer getSegmentWarn(RouteOtdConfig config, String segment) {
         if (config == null || segment == null) return null;
+        Double val;
         switch (segment) {
-            case "NOT_DEPARTED":             return config.getNotDepartedWarn();
-            case "TO_PORT":                  return config.getToPortWarn();
-            case "AT_PORT_WAIT_SHIP":        return config.getAtPortWaitWarn();
-            case "ON_SEA":                   return config.getOnSeaWarn();
-            case "AT_DEST_WAIT_UNLOAD":      return config.getAtDestWaitWarn();
-            case "UNLOADED_WAIT_DISPATCH":   return config.getUnloadWaitDispatchWarn();
-            case "DISPATCHING":              return config.getDispatchingWarn();
+            case "NOT_DEPARTED":             val = config.getNotDepartedWarn(); break;
+            case "TO_PORT":                  val = config.getToPortWarn(); break;
+            case "AT_PORT_WAIT_SHIP":        val = config.getAtPortWaitWarn(); break;
+            case "ON_SEA":                   val = config.getOnSeaWarn(); break;
+            case "AT_DEST_WAIT_UNLOAD":      val = config.getAtDestWaitWarn(); break;
+            case "UNLOADED_WAIT_DISPATCH":   val = config.getUnloadWaitDispatchWarn(); break;
+            case "DISPATCHING":              val = config.getDispatchingWarn(); break;
             default:                         return null;
         }
+        return val != null ? val.intValue() : null;
     }
 
     /**
@@ -188,15 +204,22 @@ public class ArrivedEfficiencyCalculator {
      */
     public long getSectionCumulativeOtd(RouteOtdConfig config, String sectionName) {
         if (config == null || sectionName == null) return 0;
+        Double result = 0.0;
         switch (sectionName) {
             case "前段":
-                return (long) config.getNotDepartedOtd() + config.getToPortOtd() + config.getAtPortWaitOtd();
+                result = (config.getNotDepartedOtd() != null ? config.getNotDepartedOtd() : 0.0)
+                       + (config.getToPortOtd() != null ? config.getToPortOtd() : 0.0)
+                       + (config.getAtPortWaitOtd() != null ? config.getAtPortWaitOtd() : 0.0);
+                break;
             case "中段":
-                return (long) config.getOnSeaOtd() + config.getAtDestWaitOtd();
+                result = (config.getOnSeaOtd() != null ? config.getOnSeaOtd() : 0.0)
+                       + (config.getAtDestWaitOtd() != null ? config.getAtDestWaitOtd() : 0.0);
+                break;
             case "后段":
-                return (long) config.getUnloadWaitDispatchOtd() + config.getDispatchingOtd();
-            default:
-                return 0;
+                result = (config.getUnloadWaitDispatchOtd() != null ? config.getUnloadWaitDispatchOtd() : 0.0)
+                       + (config.getDispatchingOtd() != null ? config.getDispatchingOtd() : 0.0);
+                break;
         }
+        return (long)(result * 60);
     }
 }

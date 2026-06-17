@@ -1,5 +1,6 @@
 package com.company.roro.controller;
 
+import com.company.roro.dto.Result;
 import com.company.roro.entity.BrandDict;
 import com.company.roro.service.BrandDictService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,17 +29,17 @@ public class BrandController {
      * @return 品牌列表
      */
     @GetMapping("/list")
-    public List<BrandDict> list(
+    public Result<List<BrandDict>> list(
             @RequestParam(required = false, defaultValue = "false") Boolean includeDisabled) {
         if (includeDisabled) {
-            return brandDictService.lambdaQuery()
+            return Result.success(brandDictService.lambdaQuery()
                     .orderByAsc(BrandDict::getId)
-                    .list();
+                    .list());
         } else {
-            return brandDictService.lambdaQuery()
+            return Result.success(brandDictService.lambdaQuery()
                     .eq(BrandDict::getIsActive, 1)
                     .orderByAsc(BrandDict::getId)
-                    .list();
+                    .list());
         }
     }
 
@@ -49,9 +50,9 @@ public class BrandController {
      * @return 品牌信息
      */
     @GetMapping("/{id}")
-    public BrandDict getById(
+    public Result<BrandDict> getById(
             @PathVariable Integer id) {
-        return brandDictService.getById(id);
+        return Result.success(brandDictService.getById(id));
     }
 
     /**
@@ -61,9 +62,9 @@ public class BrandController {
      * @return 是否成功
      */
     @PostMapping
-    public boolean save(
+    public Result<Boolean> save(
             @RequestBody BrandDict brandDict) {
-        return brandDictService.save(brandDict);
+        return Result.success(brandDictService.save(brandDict));
     }
 
     /**
@@ -73,9 +74,9 @@ public class BrandController {
      * @return 是否成功
      */
     @PutMapping
-    public boolean update(
+    public Result<Boolean> update(
             @RequestBody BrandDict brandDict) {
-        return brandDictService.updateById(brandDict);
+        return Result.success(brandDictService.updateById(brandDict));
     }
 
     /**
@@ -85,13 +86,13 @@ public class BrandController {
      * @return 是否成功
      */
     @DeleteMapping("/{id}")
-    public boolean delete(
+    public Result<Boolean> delete(
             @PathVariable Integer id) {
         BrandDict brand = brandDictService.getById(id);
         if (brand != null) {
             brand.setIsActive(0);
-            return brandDictService.updateById(brand);
+            return Result.success(brandDictService.updateById(brand));
         }
-        return false;
+        return Result.success(false);
     }
 }

@@ -1,5 +1,6 @@
 package com.company.roro.controller;
 
+import com.company.roro.dto.Result;
 import com.company.roro.entity.MonitorStatusDict;
 import com.company.roro.service.MonitorStatusDictService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,7 +35,7 @@ public class MonitorStatusController {
      * @return 监控状态列表（正常、预警、已超期）
      */
     @GetMapping("/list")
-    public List<MonitorStatusDict> list() {
-        return monitorStatusDictService.list();
+    public Result<List<MonitorStatusDict>> list() {
+        return Result.success(monitorStatusDictService.list());
     }
 }

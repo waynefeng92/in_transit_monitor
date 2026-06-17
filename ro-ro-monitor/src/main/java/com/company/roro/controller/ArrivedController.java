@@ -3,6 +3,7 @@ package com.company.roro.controller;
 import com.company.roro.dto.ArrivedChartDataDTO;
 import com.company.roro.dto.ArrivedSummaryDTO;
 import com.company.roro.dto.ArrivedWeeklyMonthlyDTO;
+import com.company.roro.dto.Result;
 import com.company.roro.service.ArrivedVehicleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -34,13 +35,13 @@ public class ArrivedController {
      * @return 汇总 DTO，含高效/正常/延迟计数及平均效率
      */
     @GetMapping("/summary")
-    public ArrivedSummaryDTO summary(
+    public Result<ArrivedSummaryDTO> summary(
             @RequestParam(name = "startTime", required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startTime,
             @RequestParam(name = "endTime", required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endTime,
             @RequestParam(name = "brandId", required = false) Long brandId) {
-        return arrivedVehicleService.calculateSummary(startTime, endTime, brandId);
+        return Result.success(arrivedVehicleService.calculateSummary(startTime, endTime, brandId));
     }
 
     /**
@@ -54,7 +55,7 @@ public class ArrivedController {
      * @return 图表数据 DTO，含品牌/段 × 效率分桶矩阵
      */
     @GetMapping("/chart")
-    public ArrivedChartDataDTO chart(
+    public Result<ArrivedChartDataDTO> chart(
             @RequestParam(name = "type") String type,
             @RequestParam(name = "startTime", required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startTime,
@@ -62,7 +63,7 @@ public class ArrivedController {
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endTime,
             @RequestParam(name = "brandId", required = false) Long brandId,
             @RequestParam(name = "sectionName", required = false) String sectionName) {
-        return arrivedVehicleService.calculateChartData(type, startTime, endTime, brandId, sectionName);
+        return Result.success(arrivedVehicleService.calculateChartData(type, startTime, endTime, brandId, sectionName));
     }
 
     /**
@@ -75,13 +76,13 @@ public class ArrivedController {
      * @return 按周期聚合的统计数据列表
      */
     @GetMapping("/statistics")
-    public List<ArrivedWeeklyMonthlyDTO> statistics(
+    public Result<List<ArrivedWeeklyMonthlyDTO>> statistics(
             @RequestParam(name = "period") String period,
             @RequestParam(name = "startTime", required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startTime,
             @RequestParam(name = "endTime", required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endTime,
             @RequestParam(name = "brandId", required = false) Long brandId) {
-        return arrivedVehicleService.calculateWeeklyMonthly(period, startTime, endTime, brandId);
+        return Result.success(arrivedVehicleService.calculateWeeklyMonthly(period, startTime, endTime, brandId));
     }
 }

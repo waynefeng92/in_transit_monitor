@@ -1,5 +1,6 @@
 package com.company.roro.controller;
 
+import com.company.roro.dto.Result;
 import com.company.roro.entity.PortDict;
 import com.company.roro.service.PortDictService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,17 +29,17 @@ public class PortController {
      * @return 港口列表
      */
     @GetMapping("/list")
-    public List<PortDict> list(
+    public Result<List<PortDict>> list(
             @RequestParam(required = false, defaultValue = "false") Boolean includeDisabled) {
         if (includeDisabled) {
-            return portDictService.lambdaQuery()
+            return Result.success(portDictService.lambdaQuery()
                     .orderByAsc(PortDict::getId)
-                    .list();
+                    .list());
         } else {
-            return portDictService.lambdaQuery()
+            return Result.success(portDictService.lambdaQuery()
                     .eq(PortDict::getIsActive, 1)
                     .orderByAsc(PortDict::getId)
-                    .list();
+                    .list());
         }
     }
 
@@ -49,9 +50,9 @@ public class PortController {
      * @return 港口信息
      */
     @GetMapping("/{id}")
-    public PortDict getById(
+    public Result<PortDict> getById(
             @PathVariable Integer id) {
-        return portDictService.getById(id);
+        return Result.success(portDictService.getById(id));
     }
 
     /**
@@ -61,9 +62,9 @@ public class PortController {
      * @return 是否成功
      */
     @PostMapping
-    public boolean save(
+    public Result<Boolean> save(
             @RequestBody PortDict portDict) {
-        return portDictService.save(portDict);
+        return Result.success(portDictService.save(portDict));
     }
 
     /**
@@ -73,9 +74,9 @@ public class PortController {
      * @return 是否成功
      */
     @PutMapping
-    public boolean update(
+    public Result<Boolean> update(
             @RequestBody PortDict portDict) {
-        return portDictService.updateById(portDict);
+        return Result.success(portDictService.updateById(portDict));
     }
 
     /**
@@ -85,13 +86,13 @@ public class PortController {
      * @return 是否成功
      */
     @DeleteMapping("/{id}")
-    public boolean delete(
+    public Result<Boolean> delete(
             @PathVariable Integer id) {
         PortDict port = portDictService.getById(id);
         if (port != null) {
             port.setIsActive(0);
-            return portDictService.updateById(port);
+            return Result.success(portDictService.updateById(port));
         }
-        return false;
+        return Result.success(false);
     }
 }

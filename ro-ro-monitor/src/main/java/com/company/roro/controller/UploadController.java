@@ -3,6 +3,7 @@ package com.company.roro.controller;
 import com.company.roro.dto.ExcelPreviewDTO;
 import com.company.roro.dto.ExcelRowDTO;
 import com.company.roro.dto.ImportResultDTO;
+import com.company.roro.dto.Result;
 import com.company.roro.entity.UploadBatch;
 import com.company.roro.service.ExcelParseService;
 import com.company.roro.service.TransitDataService;
@@ -11,6 +12,7 @@ import com.company.roro.util.BatchIdGenerator;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -73,11 +75,15 @@ public class UploadController {
      * @return Sheet列表、表头、前5行预览数据
      */
     @PostMapping("/preview")
-    public ExcelPreviewDTO previewExcel(
-            @RequestParam("file") MultipartFile file,
+    public ResponseEntity<?> previewExcel(
+            @RequestParam(value = "file", required = false) MultipartFile file,
             @RequestParam Integer brandId,
             @RequestParam(required = false) Integer sheetIndex) throws Exception {
-        return excelParseService.previewExcel(file, brandId, sheetIndex);
+        Result<?> validation = validateExcelFile(file);
+        if (validation != null) {
+            return ResponseEntity.badRequest().body(validation);
+        }
+        return ResponseEntity.ok(Result.success(excelParseService.previewExcel(file, brandId, sheetIndex)));
     }
 
     /**
@@ -98,11 +104,15 @@ public class UploadController {
      * @return 批次号和处理结果
      */
     @PostMapping("/excel")
-    public Map<String, Object> uploadExcel(
-            @RequestParam("file") MultipartFile file,
+    public ResponseEntity<?> uploadExcel(
+            @RequestParam(value = "file", required = false) MultipartFile file,
             @RequestParam(value = "user", defaultValue = "system") String user,
             @RequestParam Integer brandId,
             @RequestParam(required = false) Integer sheetIndex) throws IOException {
+        Result<?> validation = validateExcelFile(file);
+        if (validation != null) {
+            return ResponseEntity.badRequest().body(validation);
+        }
 
         // 1. 生成批次号
         String batchId = BatchIdGenerator.generate();
@@ -197,7 +207,7 @@ public class UploadController {
         result.put("batchId", batchId);
         result.put("fileName", originalFilename);
         result.put("message", "文件上传成功，正在后台处理中...");
-        return result;
+        return ResponseEntity.ok(Result.success(result));
     }
 
     /**
@@ -206,10 +216,10 @@ public class UploadController {
      * @return 上传批次列表，按上传时间倒序排列
      */
     @GetMapping("/history")
-    public List<UploadBatch> history() {
-        return uploadBatchService.lambdaQuery()
+    public Result<List<UploadBatch>> history() {
+        return Result.success(uploadBatchService.lambdaQuery()
                 .orderByDesc(UploadBatch::getUploadTime)
-                .list();
+                .list());
     }
 
     /**
@@ -219,11 +229,31 @@ public class UploadController {
      * @return 批次信息，包含处理进度（recordCount）和状态（status）
      */
     @GetMapping("/batch/{batchId}")
-    public UploadBatch getByBatchId(
+    public Result<UploadBatch> getByBatchId(
             @PathVariable String batchId) {
-        return uploadBatchService.lambdaQuery()
+        return Result.success(uploadBatchService.lambdaQuery()
                 .eq(UploadBatch::getBatchId, batchId)
-                .one();
+                .one());
+    }
+
+    private Result<?> validateExcelFile(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            return Result.error(400, "请选择要上传的文件");
+        }
+
+        String contentType = file.getContentType();
+        String filename = file.getOriginalFilename();
+
+        boolean validMime = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet".equals(contentType)
+                || "application/vnd.ms-excel".equals(contentType);
+        boolean validExtension = filename != null
+                && (filename.toLowerCase().endsWith(".xlsx") || filename.toLowerCase().endsWith(".xls"));
+
+        if (!validMime || !validExtension) {
+            return Result.error(400, "仅支持 .xlsx 和 .xls 格式文件");
+        }
+
+        return null;
     }
 
     /**

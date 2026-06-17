@@ -54,8 +54,8 @@ public class ExcelMappingController {
      * @return 标准字段列表
      */
     @GetMapping("/standard-fields")
-    public List<StandardFieldDTO> getStandardFields() {
-        return STANDARD_FIELDS;
+    public Result<List<StandardFieldDTO>> getStandardFields() {
+        return Result.success(STANDARD_FIELDS);
     }
 
     /**
@@ -67,7 +67,7 @@ public class ExcelMappingController {
      * @return 分页结果
      */
     @GetMapping("/list")
-    public Page<ExcelMappingDTO> list(
+    public Result<Page<ExcelMappingDTO>> list(
             @RequestParam(defaultValue = "1") Integer current,
             @RequestParam(defaultValue = "20") Integer size,
             @RequestParam(required = false) Integer brandId) {
@@ -97,7 +97,7 @@ public class ExcelMappingController {
         }).collect(Collectors.toList());
         dtoPage.setRecords(dtoList);
 
-        return dtoPage;
+        return Result.success(dtoPage);
     }
 
     /**
@@ -107,7 +107,7 @@ public class ExcelMappingController {
      * @return 该品牌的配置列表
      */
     @GetMapping("/brand/{brandId}")
-    public List<ExcelMappingDTO> getByBrandId(
+    public Result<List<ExcelMappingDTO>> getByBrandId(
             @PathVariable Integer brandId) {
 
         Integer queryBrandId = (brandId == 0) ? null : brandId;
@@ -122,12 +122,12 @@ public class ExcelMappingController {
         Map<String, String> fieldNameMap = STANDARD_FIELDS.stream()
                 .collect(Collectors.toMap(StandardFieldDTO::getFieldName, StandardFieldDTO::getFieldLabel));
 
-        return list.stream().map(entity -> {
+        return Result.success(list.stream().map(entity -> {
             ExcelMappingDTO dto = new ExcelMappingDTO();
             BeanUtils.copyProperties(entity, dto);
             dto.setStandardFieldName(fieldNameMap.getOrDefault(entity.getStandardField(), entity.getStandardField()));
             return dto;
-        }).collect(Collectors.toList());
+        }).collect(Collectors.toList()));
     }
 
     /**
@@ -137,11 +137,11 @@ public class ExcelMappingController {
      * @return 是否成功
      */
     @PostMapping
-    public boolean save(
+    public Result<Boolean> save(
             @RequestBody ExcelMappingDTO dto) {
         ExcelFieldMapping entity = new ExcelFieldMapping();
         BeanUtils.copyProperties(dto, entity);
-        return excelFieldMappingService.save(entity);
+        return Result.success(excelFieldMappingService.save(entity));
     }
 
     /**
@@ -151,11 +151,11 @@ public class ExcelMappingController {
      * @return 是否成功
      */
     @PutMapping
-    public boolean update(
+    public Result<Boolean> update(
             @RequestBody ExcelMappingDTO dto) {
         ExcelFieldMapping entity = new ExcelFieldMapping();
         BeanUtils.copyProperties(dto, entity);
-        return excelFieldMappingService.updateById(entity);
+        return Result.success(excelFieldMappingService.updateById(entity));
     }
 
     /**
@@ -167,14 +167,14 @@ public class ExcelMappingController {
      * @return 是否成功
      */
     @PostMapping("/batch")
-    public boolean batchSave(
+    public Result<Boolean> batchSave(
             @RequestBody BatchSaveMappingRequest request) {
 
         Integer brandId = request.getBrandId();
         List<ExcelMappingDTO> mappings = request.getMappings();
 
         if (mappings == null || mappings.isEmpty()) {
-            return false;
+            return Result.success(false);
         }
 
         // 删除该品牌的旧配置
@@ -191,7 +191,7 @@ public class ExcelMappingController {
             return entity;
         }).collect(Collectors.toList());
 
-        return excelFieldMappingService.saveBatch(entities);
+        return Result.success(excelFieldMappingService.saveBatch(entities));
     }
 
     /**
@@ -201,9 +201,9 @@ public class ExcelMappingController {
      * @return 是否成功
      */
     @DeleteMapping("/{id}")
-    public boolean delete(
+    public Result<Boolean> delete(
             @PathVariable Integer id) {
-        return excelFieldMappingService.removeById(id);
+        return Result.success(excelFieldMappingService.removeById(id));
     }
 
     /**
@@ -215,7 +215,7 @@ public class ExcelMappingController {
      * @return 复制结果
      */
     @PostMapping("/copy")
-    public Map<String, Object> copyMapping(
+    public Result<Map<String, Object>> copyMapping(
             @RequestBody CopyMappingRequest request) {
 
         Integer sourceBrandId = request.getSourceBrandId();
@@ -231,7 +231,7 @@ public class ExcelMappingController {
             Map<String, Object> result = new HashMap<>();
             result.put("success", false);
             result.put("message", "源品牌没有配置");
-            return result;
+            return Result.success(result);
         }
 
         // 删除目标品牌的旧配置
@@ -254,7 +254,7 @@ public class ExcelMappingController {
         result.put("success", success);
         result.put("message", success ? "复制成功，共 " + targetList.size() + " 条配置" : "复制失败");
         result.put("count", targetList.size());
-        return result;
+        return Result.success(result);
     }
 
     /**
@@ -265,13 +265,13 @@ public class ExcelMappingController {
      * @return 是否成功
      */
     @PutMapping("/{id}/status")
-    public boolean updateStatus(
+    public Result<Boolean> updateStatus(
             @PathVariable Integer id,
             @RequestParam Integer isActive) {
 
         ExcelFieldMapping entity = new ExcelFieldMapping();
         entity.setId(id);
         entity.setIsActive(isActive);
-        return excelFieldMappingService.updateById(entity);
+        return Result.success(excelFieldMappingService.updateById(entity));
     }
 }

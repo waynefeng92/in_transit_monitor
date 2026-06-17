@@ -104,11 +104,11 @@ public class ArrivedVehicleService {
             dto.setOrderReleaseTime(order.getOrderReleaseTime() != null ? order.getOrderReleaseTime().toString() : null);
 
             // 计算效率
+            RouteOtdConfig config = order.getRouteId() != null ? otdConfigMap.get(order.getRouteId()) : null;
             Double efficiency = efficiencyCalculator.calculateEfficiency(
-                    order.getOrderReleaseTime(), transit.getArriveShopTime());
+                    order.getOrderReleaseTime(), transit.getArriveShopTime(), config);
             dto.setEfficiency(efficiency);
 
-            RouteOtdConfig config = order.getRouteId() != null ? otdConfigMap.get(order.getRouteId()) : null;
             dto.setEfficiencyBucket(efficiencyCalculator.determineBucket(
                     order.getOrderReleaseTime(), transit.getArriveShopTime(),
                     config, monitorConfig.getOverallWarnRatio()));
@@ -176,7 +176,7 @@ public class ArrivedVehicleService {
             else if ("DELAYED".equals(bucket)) delayedCount++;
 
             Double efficiency = efficiencyCalculator.calculateEfficiency(
-                    order.getOrderReleaseTime(), transit.getArriveShopTime());
+                    order.getOrderReleaseTime(), transit.getArriveShopTime(), config);
             if (efficiency != null) {
                 totalEfficiency += efficiency;
                 efficiencyCount++;
@@ -483,7 +483,7 @@ public class ArrivedVehicleService {
 
             RouteOtdConfig config = order.getRouteId() != null ? otdMap.get(order.getRouteId()) : null;
             Double efficiency = efficiencyCalculator.calculateEfficiency(
-                    order.getOrderReleaseTime(), transit.getArriveShopTime());
+                    order.getOrderReleaseTime(), transit.getArriveShopTime(), config);
 
             long[] stats = periodStats.computeIfAbsent(periodKey, k -> new long[2]);
             stats[0]++; // count

@@ -2,6 +2,7 @@ package com.company.roro.controller;
 
 import com.company.roro.dto.OtdConfigImportDTO;
 import com.company.roro.dto.OtdConfigImportResultDTO;
+import com.company.roro.dto.Result;
 import com.company.roro.entity.BrandDict;
 import com.company.roro.entity.PortDict;
 import com.company.roro.entity.RouteDict;
@@ -15,6 +16,7 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.apache.poi.openxml4j.util.ZipSecureFile;
 
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
@@ -64,12 +66,12 @@ public class RouteOtdConfigController {
      * @return OTD配置信息
      */
     @GetMapping("/route/{routeId}")
-    public RouteOtdConfig getByRouteId(
+    public Result<RouteOtdConfig> getByRouteId(
             @PathVariable Integer routeId) {
-        return routeOtdConfigService.lambdaQuery()
+        return Result.success(routeOtdConfigService.lambdaQuery()
                 .eq(RouteOtdConfig::getRouteId, routeId)
                 .eq(RouteOtdConfig::getIsActive, 1)
-                .one();
+                .one());
     }
 
     /**
@@ -79,9 +81,9 @@ public class RouteOtdConfigController {
      * @return OTD配置信息
      */
     @GetMapping("/{id}")
-    public RouteOtdConfig getById(
+    public Result<RouteOtdConfig> getById(
             @PathVariable Integer id) {
-        return routeOtdConfigService.getById(id);
+        return Result.success(routeOtdConfigService.getById(id));
     }
 
     /**
@@ -91,9 +93,9 @@ public class RouteOtdConfigController {
      * @return 是否成功
      */
     @PostMapping
-    public boolean save(
+    public Result<Boolean> save(
             @RequestBody RouteOtdConfig config) {
-        return routeOtdConfigService.save(config);
+        return Result.success(routeOtdConfigService.save(config));
     }
 
     /**
@@ -103,9 +105,9 @@ public class RouteOtdConfigController {
      * @return 是否成功
      */
     @PutMapping
-    public boolean update(
+    public Result<Boolean> update(
             @RequestBody RouteOtdConfig config) {
-        return routeOtdConfigService.updateById(config);
+        return Result.success(routeOtdConfigService.updateById(config));
     }
 
     /**
@@ -115,14 +117,14 @@ public class RouteOtdConfigController {
      * @return 是否成功
      */
     @DeleteMapping("/{id}")
-    public boolean delete(
+    public Result<Boolean> delete(
             @PathVariable Integer id) {
         RouteOtdConfig config = routeOtdConfigService.getById(id);
         if (config != null) {
             config.setIsActive(0);
-            return routeOtdConfigService.updateById(config);
+            return Result.success(routeOtdConfigService.updateById(config));
         }
-        return false;
+        return Result.success(false);
     }
 
     // ==================== 批量导出导入 ====================
@@ -205,101 +207,87 @@ public class RouteOtdConfigController {
                 row.createCell(5).setCellValue(route.getDestCity() != null ? route.getDestCity() : "");
 
                 // OTD时效（已有配置则填充，否则留空）
-                Integer notDepartedOtd = config != null ? config.getNotDepartedOtd() : null;
-                if (notDepartedOtd != null) {
-                    row.createCell(6).setCellValue(notDepartedOtd);
+                if (config != null && config.getNotDepartedOtd() != null) {
+                    row.createCell(6).setCellValue(config.getNotDepartedOtd());
                 } else {
                     row.createCell(6).setCellValue("");
                 }
 
-                Integer toPortOtd = config != null ? config.getToPortOtd() : null;
-                if (toPortOtd != null) {
-                    row.createCell(7).setCellValue(toPortOtd);
+                if (config != null && config.getToPortOtd() != null) {
+                    row.createCell(7).setCellValue(config.getToPortOtd());
                 } else {
                     row.createCell(7).setCellValue("");
                 }
 
-                Integer atPortWaitOtd = config != null ? config.getAtPortWaitOtd() : null;
-                if (atPortWaitOtd != null) {
-                    row.createCell(8).setCellValue(atPortWaitOtd);
+                if (config != null && config.getAtPortWaitOtd() != null) {
+                    row.createCell(8).setCellValue(config.getAtPortWaitOtd());
                 } else {
                     row.createCell(8).setCellValue("");
                 }
 
-                Integer onSeaOtd = config != null ? config.getOnSeaOtd() : null;
-                if (onSeaOtd != null) {
-                    row.createCell(9).setCellValue(onSeaOtd);
+                if (config != null && config.getOnSeaOtd() != null) {
+                    row.createCell(9).setCellValue(config.getOnSeaOtd());
                 } else {
                     row.createCell(9).setCellValue("");
                 }
 
-                Integer atDestWaitOtd = config != null ? config.getAtDestWaitOtd() : null;
-                if (atDestWaitOtd != null) {
-                    row.createCell(10).setCellValue(atDestWaitOtd);
+                if (config != null && config.getAtDestWaitOtd() != null) {
+                    row.createCell(10).setCellValue(config.getAtDestWaitOtd());
                 } else {
                     row.createCell(10).setCellValue("");
                 }
 
-                Integer unloadWaitDispatchOtd = config != null ? config.getUnloadWaitDispatchOtd() : null;
-                if (unloadWaitDispatchOtd != null) {
-                    row.createCell(11).setCellValue(unloadWaitDispatchOtd);
+                if (config != null && config.getUnloadWaitDispatchOtd() != null) {
+                    row.createCell(11).setCellValue(config.getUnloadWaitDispatchOtd());
                 } else {
                     row.createCell(11).setCellValue("");
                 }
 
-                Integer dispatchingOtd = config != null ? config.getDispatchingOtd() : null;
-                if (dispatchingOtd != null) {
-                    row.createCell(12).setCellValue(dispatchingOtd);
+                if (config != null && config.getDispatchingOtd() != null) {
+                    row.createCell(12).setCellValue(config.getDispatchingOtd());
                 } else {
                     row.createCell(12).setCellValue("");
                 }
 
 // 预警时效
-                Integer notDepartedWarn = config != null ? config.getNotDepartedWarn() : null;
-                if (notDepartedWarn != null) {
-                    row.createCell(13).setCellValue(notDepartedWarn);
+                if (config != null && config.getNotDepartedWarn() != null) {
+                    row.createCell(13).setCellValue(config.getNotDepartedWarn());
                 } else {
                     row.createCell(13).setCellValue("");
                 }
 
-                Integer toPortWarn = config != null ? config.getToPortWarn() : null;
-                if (toPortWarn != null) {
-                    row.createCell(14).setCellValue(toPortWarn);
+                if (config != null && config.getToPortWarn() != null) {
+                    row.createCell(14).setCellValue(config.getToPortWarn());
                 } else {
                     row.createCell(14).setCellValue("");
                 }
 
-                Integer atPortWaitWarn = config != null ? config.getAtPortWaitWarn() : null;
-                if (atPortWaitWarn != null) {
-                    row.createCell(15).setCellValue(atPortWaitWarn);
+                if (config != null && config.getAtPortWaitWarn() != null) {
+                    row.createCell(15).setCellValue(config.getAtPortWaitWarn());
                 } else {
                     row.createCell(15).setCellValue("");
                 }
 
-                Integer onSeaWarn = config != null ? config.getOnSeaWarn() : null;
-                if (onSeaWarn != null) {
-                    row.createCell(16).setCellValue(onSeaWarn);
+                if (config != null && config.getOnSeaWarn() != null) {
+                    row.createCell(16).setCellValue(config.getOnSeaWarn());
                 } else {
                     row.createCell(16).setCellValue("");
                 }
 
-                Integer atDestWaitWarn = config != null ? config.getAtDestWaitWarn() : null;
-                if (atDestWaitWarn != null) {
-                    row.createCell(17).setCellValue(atDestWaitWarn);
+                if (config != null && config.getAtDestWaitWarn() != null) {
+                    row.createCell(17).setCellValue(config.getAtDestWaitWarn());
                 } else {
                     row.createCell(17).setCellValue("");
                 }
 
-                Integer unloadWaitDispatchWarn = config != null ? config.getUnloadWaitDispatchWarn() : null;
-                if (unloadWaitDispatchWarn != null) {
-                    row.createCell(18).setCellValue(unloadWaitDispatchWarn);
+                if (config != null && config.getUnloadWaitDispatchWarn() != null) {
+                    row.createCell(18).setCellValue(config.getUnloadWaitDispatchWarn());
                 } else {
                     row.createCell(18).setCellValue("");
                 }
 
-                Integer dispatchingWarn = config != null ? config.getDispatchingWarn() : null;
-                if (dispatchingWarn != null) {
-                    row.createCell(19).setCellValue(dispatchingWarn);
+                if (config != null && config.getDispatchingWarn() != null) {
+                    row.createCell(19).setCellValue(config.getDispatchingWarn());
                 } else {
                     row.createCell(19).setCellValue("");
                 }
@@ -318,11 +306,12 @@ public class RouteOtdConfigController {
      * 预览导入数据
      */
     @PostMapping("/import/preview")
-    public List<OtdConfigImportDTO> previewImport(
+    public Result<List<OtdConfigImportDTO>> previewImport(
             @RequestParam("file") MultipartFile file) throws Exception {
 
         List<OtdConfigImportDTO> result = new ArrayList<>();
 
+        ZipSecureFile.setMinInflateRatio(0.001);
         try (Workbook workbook = WorkbookFactory.create(file.getInputStream())) {
             Sheet sheet = workbook.getSheetAt(0);
 
@@ -340,22 +329,22 @@ public class RouteOtdConfigController {
                     continue;
                 }
 
-                // 读取时效数据
-                dto.setNotDepartedOtd(getIntCellValue(row.getCell(6)));
-                dto.setToPortOtd(getIntCellValue(row.getCell(7)));
-                dto.setAtPortWaitOtd(getIntCellValue(row.getCell(8)));
-                dto.setOnSeaOtd(getIntCellValue(row.getCell(9)));
-                dto.setAtDestWaitOtd(getIntCellValue(row.getCell(10)));
-                dto.setUnloadWaitDispatchOtd(getIntCellValue(row.getCell(11)));
-                dto.setDispatchingOtd(getIntCellValue(row.getCell(12)));
+                // 读取时效数据（支持小数）
+                dto.setNotDepartedOtd(getDoubleCellValue(row.getCell(6)));
+                dto.setToPortOtd(getDoubleCellValue(row.getCell(7)));
+                dto.setAtPortWaitOtd(getDoubleCellValue(row.getCell(8)));
+                dto.setOnSeaOtd(getDoubleCellValue(row.getCell(9)));
+                dto.setAtDestWaitOtd(getDoubleCellValue(row.getCell(10)));
+                dto.setUnloadWaitDispatchOtd(getDoubleCellValue(row.getCell(11)));
+                dto.setDispatchingOtd(getDoubleCellValue(row.getCell(12)));
 
-                dto.setNotDepartedWarn(getIntCellValue(row.getCell(13)));
-                dto.setToPortWarn(getIntCellValue(row.getCell(14)));
-                dto.setAtPortWaitWarn(getIntCellValue(row.getCell(15)));
-                dto.setOnSeaWarn(getIntCellValue(row.getCell(16)));
-                dto.setAtDestWaitWarn(getIntCellValue(row.getCell(17)));
-                dto.setUnloadWaitDispatchWarn(getIntCellValue(row.getCell(18)));
-                dto.setDispatchingWarn(getIntCellValue(row.getCell(19)));
+                dto.setNotDepartedWarn(getDoubleCellValue(row.getCell(13)));
+                dto.setToPortWarn(getDoubleCellValue(row.getCell(14)));
+                dto.setAtPortWaitWarn(getDoubleCellValue(row.getCell(15)));
+                dto.setOnSeaWarn(getDoubleCellValue(row.getCell(16)));
+                dto.setAtDestWaitWarn(getDoubleCellValue(row.getCell(17)));
+                dto.setUnloadWaitDispatchWarn(getDoubleCellValue(row.getCell(18)));
+                dto.setDispatchingWarn(getDoubleCellValue(row.getCell(19)));
 
                 // 读取线路信息用于展示
                 RouteDict route = routeDictService.getById(dto.getRouteId());
@@ -370,14 +359,14 @@ public class RouteOtdConfigController {
             }
         }
 
-        return result;
+        return Result.success(result);
     }
 
     /**
      * 批量导入OTD配置
      */
     @PostMapping("/import/batch")
-    public OtdConfigImportResultDTO batchImport(
+    public Result<OtdConfigImportResultDTO> batchImport(
             @RequestBody List<OtdConfigImportDTO> importData) {
 
         OtdConfigImportResultDTO result = new OtdConfigImportResultDTO();
@@ -423,21 +412,31 @@ public class RouteOtdConfigController {
             }
         }
 
-        return result;
+        return Result.success(result);
     }
 
     /**
-     * 获取单元格整数值
+     * 获取单元格Double值（支持小数时效）
      */
-    private Integer getIntCellValue(Cell cell) {
+    private Double getDoubleCellValue(Cell cell) {
         if (cell == null) return null;
         try {
             switch (cell.getCellType()) {
                 case NUMERIC:
-                    return (int) cell.getNumericCellValue();
+                    return cell.getNumericCellValue();
                 case STRING:
                     String str = cell.getStringCellValue().trim();
-                    return str.isEmpty() ? null : Integer.parseInt(str);
+                    return str.isEmpty() ? null : Double.parseDouble(str);
+                case FORMULA:
+                    switch (cell.getCachedFormulaResultType()) {
+                        case NUMERIC:
+                            return cell.getNumericCellValue();
+                        case STRING:
+                            String s = cell.getStringCellValue().trim();
+                            return s.isEmpty() ? null : Double.parseDouble(s);
+                        default:
+                            return null;
+                    }
                 default:
                     return null;
             }
