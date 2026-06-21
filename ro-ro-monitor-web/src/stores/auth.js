@@ -17,13 +17,10 @@ export const useAuthStore = defineStore('auth', {
     async login(username, password) {
       this.loading = true
       try {
-        const res = await request.post('/api/auth/login', { username, password })
-        if (res.code === 200) {
-          this.user = res.data
-          this.isAuthenticated = true
-          return true
-        }
-        return false
+        const userData = await request.post('/auth/login', { username, password })
+        this.user = userData
+        this.isAuthenticated = true
+        return true
       } catch (error) {
         this.isAuthenticated = false
         throw error
@@ -34,7 +31,7 @@ export const useAuthStore = defineStore('auth', {
 
     async logout() {
       try {
-        await request.post('/api/auth/logout')
+        await request.post('/auth/logout')
       } finally {
         this.user = null
         this.isAuthenticated = false
@@ -43,17 +40,15 @@ export const useAuthStore = defineStore('auth', {
 
     async checkAuth() {
       try {
-        const res = await request.get('/api/auth/me')
-        if (res.code === 200) {
-          this.user = res.data
-          this.isAuthenticated = true
-          return true
-        }
+        const userData = await request.get('/auth/me')
+        this.user = userData
+        this.isAuthenticated = true
+        return true
       } catch {
         this.user = null
         this.isAuthenticated = false
+        return false
       }
-      return false
     }
   }
 })

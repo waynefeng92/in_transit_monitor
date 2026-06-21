@@ -28,7 +28,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @Slf4j
 @SpringBootApplication
 @EnableConfigurationProperties(MonitorConfig.class)
-@MapperScan("com.company.roro.mapper")  // 扫描 Mapper 接口，自动生成代理对象
+@MapperScan({"com.company.roro.mapper", "com.company.roro.repository"})  // 扫描 Mapper 和 Repository 接口
 @EnableScheduling                        // 开启定时任务支持
 public class RoroMonitorApplication {
 
