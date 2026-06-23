@@ -33,6 +33,8 @@ docker compose up -d
 #   登录: admin / 你设置的 ADMIN_DEFAULT_PASSWORD
 ```
 
+> 后续迭代升级：`git pull && bash deploy.sh`（自动版本化构建+部署）
+
 ## 架构
 
 ```
@@ -58,6 +60,9 @@ docker compose up -d
 | `ADMIN_DEFAULT_PASSWORD` | `admin123` | 管理员初始密码 |
 | `CORS_ALLOWED_ORIGINS` | `http://localhost` | 允许跨域访问的来源 |
 | `FRONTEND_PORT` | `80` | 前端 nginx 监听端口 |
+| `BACKEND_TAG` | `latest` | 后端镜像版本标签（git SHA） |
+| `FRONTEND_TAG` | `latest` | 前端镜像版本标签（git SHA） |
+| `DB_USERNAME` | `roro_app` | 数据库连接用户名（专用用户，非 root） |
 
 ## 项目结构
 
@@ -82,6 +87,13 @@ in_transit_monitor/
 │   └── Dockerfile                # 多阶段 Docker 构建
 ├── docker-compose.yml            # 三容器编排
 └── .env.example                  # 环境变量模板
+├── deploy.sh                    # 一键构建+部署（版本化镜像标签）
+├── rollback.sh                  # 一键回滚到上一版本
+├── run-migration.sh            # 增量数据库迁移
+├── backup.sh                   # 每日数据库备份（7天保留）
+├── backups/                    # 备份文件输出目录
+├── docs/
+│   └── deployment-guide.md     # 生产部署指南
 ```
 
 ## 本地开发
@@ -101,6 +113,62 @@ cd ro-ro-monitor && mvn test
 # 前端测试
 cd ro-ro-monitor-web && npm test
 ```
+
+## 生产部署
+
+### 日常迭代部署
+
+```bash
+# 拉取最新代码
+git pull
+
+# 如有数据库变更，先执行迁移
+bash run-migration.sh
+
+# 一键构建+部署（自动版本化标签 + 健康检查）
+bash deploy.sh
+```
+
+### 回滚
+
+```bash
+# 回滚到上一版本（5 秒完成，无需重新构建）
+bash rollback.sh
+```
+
+### 数据库迁移
+
+新增迁移文件放在 `ro-ro-monitor/src/main/resources/sql/` 目录下，编号从 `5_` 开始：
+```
+5_add_new_feature.sql
+```
+
+执行迁移：
+```bash
+bash run-migration.sh
+```
+自动追踪已应用的迁移（`.last_migration`），幂等执行。
+
+### 数据库备份
+
+```bash
+bash backup.sh
+```
+备份文件保存在 `backups/ro_ro_monitor_YYYYMMDD.sql`，自动保留最近 7 天。
+
+设置定时备份（crontab）：
+```bash
+crontab -e
+# 添加：
+0 3 * * * cd /path/to/in_transit_monitor && bash backup.sh
+```
+
+### 安全说明
+
+- **数据库用户**：应用使用专用 `roro_app` 用户连接（仅 SELECT/INSERT/UPDATE/DELETE），不直接使用 root
+- **凭证轮换**：首次部署后应在系统内修改管理员默认密码
+- **Actuator**：健康检查端点仅返回 `{"status":"UP"}`，不泄露内部详情
+- **凭证管理**：`.env` 和 `application-prod.yml` 由 `.gitignore` 排除，不提交到仓库
 
 ## API 接口
 
@@ -129,4 +197,4 @@ cd ro-ro-monitor-web && npm test
 - 首次启动会自动执行 SQL 初始化脚本创建表结构（位于 `ro-ro-monitor/src/main/resources/sql/`）
 - MySQL 数据存储在 Docker 命名卷 `mysql-data` 中，`docker compose down` 不丢失
 - 所有 API（除 `/actuator/health` 和 `/api/auth/*`）均需登录后访问
-- 更新代码后执行 `docker compose up -d --build` 重新构建并启动
+- 更新代码后执行 `bash deploy.sh` 构建并部署（自动版本化镜像标签）

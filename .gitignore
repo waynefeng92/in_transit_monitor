@@ -86,3 +86,4 @@ AGENTS.md
 *.bak
 *~
 \#*\#
+.current_tag
