@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -78,6 +79,14 @@ public class TransitDataServiceImpl implements TransitDataService {
             .collect(Collectors.toMap(LocationAlias::getAlias, LocationAlias::getStandardName, (a, b) -> a));
         log.info("预加载地点别名: {} 条", aliasMap.size());
 
+        // 预加载订单缓存（避免逐行查库）
+        List<String> vins = rows.stream().map(ExcelRowDTO::getVin).filter(Objects::nonNull).distinct().collect(Collectors.toList());
+        Map<String, OrderInfo> orderCache = orderInfoService.lambdaQuery()
+            .in(OrderInfo::getVin, vins)
+            .list().stream()
+            .collect(Collectors.toMap(OrderInfo::getVin, o -> o, (a, b) -> a));
+        log.info("预加载订单: {} 条", orderCache.size());
+
         for (ExcelRowDTO row : rows) {
             try {
                 // 1. 处理品牌 (cached lookup)
@@ -95,7 +104,7 @@ public class TransitDataServiceImpl implements TransitDataService {
                 }
 
                 // 2. 处理订单
-                OrderInfo order = getOrCreateOrder(brand.getId(), row);
+                OrderInfo order = getOrCreateOrder(brand.getId(), row, orderCache);
                 if (order == null) {
                     log.error("订单处理失败: VIN={}", row.getVin());
                     continue;
@@ -212,16 +221,19 @@ public class TransitDataServiceImpl implements TransitDataService {
     /**
      * 获取或创建订单
      */
-    private OrderInfo getOrCreateOrder(Integer brandId, ExcelRowDTO row) {
-        if (row.getVin() == null || row.getOrderReleaseTime() == null) {
+    private OrderInfo getOrCreateOrder(Integer brandId, ExcelRowDTO row, Map<String, OrderInfo> orderCache) {
+        if (row.getVin() == null) {
             return null;
         }
 
-        // 根据 VIN + 订单释放时间 查找
-        OrderInfo order = orderInfoService.lambdaQuery()
-                .eq(OrderInfo::getVin, row.getVin())
-                .eq(OrderInfo::getOrderReleaseTime, row.getOrderReleaseTime())
-                .one();
+        // 优先从缓存获取
+        OrderInfo order = orderCache.get(row.getVin());
+        if (order == null) {
+            // 缓存未命中，回退查库
+            order = orderInfoService.lambdaQuery()
+                    .eq(OrderInfo::getVin, row.getVin())
+                    .one();
+        }
 
         if (order == null) {
             // 不存在则创建

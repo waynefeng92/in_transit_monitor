@@ -5,7 +5,9 @@ import com.company.roro.dto.*;
 import com.company.roro.entity.BrandDict;
 import com.company.roro.entity.PortDict;
 import com.company.roro.entity.RouteDict;
+import com.company.roro.entity.LocationAlias;
 import com.company.roro.service.BrandDictService;
+import com.company.roro.service.LocationAliasService;
 import com.company.roro.service.PortDictService;
 import com.company.roro.service.RouteDictService;
 import org.apache.poi.ss.usermodel.*;
@@ -40,6 +42,9 @@ public class RouteController {
 
     @Autowired
     private PortDictService portDictService;
+
+    @Autowired
+    private LocationAliasService locationAliasService;
 
     /**
      * 查询所有激活的线路
@@ -248,6 +253,18 @@ public class RouteController {
                 .filter(p -> p.getIsActive() == 1)
                 .collect(Collectors.toMap(PortDict::getPortName, p -> p, (a, b) -> a));
 
+        // 加载地点别名：alias -> 标准港口名，方便导入时识别"大连码头"这类别名
+        Map<String, String> portAliasMap = locationAliasService.list().stream()
+                .collect(Collectors.toMap(LocationAlias::getAlias, LocationAlias::getStandardName, (a, b) -> a));
+
+        // 把别名也加入 portMap，这样别名也能匹配到港口
+        portAliasMap.forEach((alias, standardName) -> {
+            PortDict matched = portMap.get(standardName);
+            if (matched != null) {
+                portMap.put(alias, matched);
+            }
+        });
+
         Set<String> missingBrands = new HashSet<>();
         Set<String> missingPorts = new HashSet<>();
 
@@ -343,6 +360,16 @@ public class RouteController {
         Map<String, PortDict> portMap = portDictService.list().stream()
                 .filter(p -> p.getIsActive() == 1)
                 .collect(Collectors.toMap(PortDict::getPortName, p -> p, (a, b) -> a));
+
+        // 加载地点别名，使别名也能匹配到对应港口
+        Map<String, String> portAliasMap = locationAliasService.list().stream()
+                .collect(Collectors.toMap(LocationAlias::getAlias, LocationAlias::getStandardName, (a, b) -> a));
+        portAliasMap.forEach((alias, standardName) -> {
+            PortDict matched = portMap.get(standardName);
+            if (matched != null) {
+                portMap.put(alias, matched);
+            }
+        });
 
         for (RouteImportRequestDTO dto : importData) {
             try {

@@ -318,7 +318,9 @@
             <el-collapse style="max-width: 600px; margin: 0 auto">
               <el-collapse-item title="查看失败详情" name="1">
                 <el-table :data="importResult.failDetails" border stripe size="small">
-                  <el-table-column prop="value" label="失败原因" />
+                  <el-table-column label="失败原因">
+                    <template #default="{ row }">{{ row }}</template>
+                  </el-table-column>
                 </el-table>
               </el-collapse-item>
             </el-collapse>
