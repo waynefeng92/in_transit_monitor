@@ -274,6 +274,7 @@ CREATE TABLE `vehicle_transit` (
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   `overall_monitor_status` varchar(20) DEFAULT NULL COMMENT '整段监控状态：NORMAL/WARN/OVERDUE',
   `section_monitor_status` varchar(20) DEFAULT NULL COMMENT '三段监控状态：NORMAL/WARN/OVERDUE',
+  `version` int NOT NULL DEFAULT '1' COMMENT '乐观锁版本号',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_order` (`order_id`),
   KEY `idx_order` (`order_id`),

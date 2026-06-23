@@ -10,6 +10,7 @@ import com.company.roro.service.*;
 import com.company.roro.util.StatusCalculator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,6 +36,8 @@ public class TransitDataServiceImpl implements TransitDataService {
     private final VehicleTransitService vehicleTransitService;
     private final MonitorConfig monitorConfig;
     private final LocationAliasService locationAliasService;
+
+    private static final int MAX_RETRIES = 3;
 
     @Override
     @Transactional
@@ -301,9 +304,36 @@ public class TransitDataServiceImpl implements TransitDataService {
     }
 
     /**
-     * Upsert 在途记录
+     * Upsert 在途记录（带乐观锁冲突重试）
      */
     private void upsertVehicleTransit(VehicleTransit transit) {
+        for (int attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+            try {
+                boolean success = tryUpsertVehicleTransit(transit);
+                if (success) {
+                    return;
+                }
+                // updateById 返回 false 表示乐观锁冲突（version 不匹配）
+                if (attempt == MAX_RETRIES) {
+                    log.error("更新车辆状态失败，乐观锁冲突已达最大重试次数，orderId={}", transit.getOrderId());
+                    throw new RuntimeException("更新车辆状态失败，数据已被其他操作修改，orderId=" + transit.getOrderId());
+                }
+                log.warn("乐观锁冲突，第{}次重试，orderId={}", attempt, transit.getOrderId());
+            } catch (DuplicateKeyException e) {
+                if (attempt == MAX_RETRIES) {
+                    log.error("保存车辆状态失败，唯一键冲突已达最大重试次数，orderId={}", transit.getOrderId());
+                    throw new RuntimeException("保存车辆状态失败，数据冲突，orderId=" + transit.getOrderId(), e);
+                }
+                log.warn("唯一键冲突，第{}次重试，orderId={}", attempt, transit.getOrderId());
+            }
+        }
+    }
+
+    /**
+     * 单次尝试 Upsert 在途记录
+     * @return true 表示成功，false 表示乐观锁冲突需要重试
+     */
+    private boolean tryUpsertVehicleTransit(VehicleTransit transit) {
         log.info("准备入库，orderId: {}", transit.getOrderId());
         log.info("  arriveShopTime: {}", transit.getArriveShopTime());
 
@@ -346,11 +376,15 @@ public class TransitDataServiceImpl implements TransitDataService {
             existing.setOverallMonitorStatus(transit.getOverallMonitorStatus());
             existing.setSectionMonitorStatus(transit.getSectionMonitorStatus());
 
-            vehicleTransitService.updateById(existing);
-            log.info("  合并更新成功");
+            boolean updated = vehicleTransitService.updateById(existing);
+            if (updated) {
+                log.info("  合并更新成功");
+            }
+            return updated;
         } else {
             vehicleTransitService.save(transit);
             log.info("  新增成功，ID: {}", transit.getId());
+            return true;
         }
     }
 }
