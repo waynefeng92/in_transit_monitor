@@ -57,6 +57,7 @@
       :loading="loading"
       :initial-loading="sectionInitialLoading"
       :drill-down-section="sectionDrillDown"
+      :all-brand-options="allBrandOptions"
       @reset-filters="sectionResetFilters"
       @refresh="loadData"
       @drilldown="handleSectionDrilldown"
@@ -66,7 +67,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, watch, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue'
 import request from '@/api/request'
 import SegmentTab from '@/components/dashboard/SegmentTab.vue'
 import OverallTab from '@/components/dashboard/OverallTab.vue'
@@ -168,6 +169,21 @@ watch(() => sectionSummary.value, (val) => {
   }
 }, { deep: true })
 
+// 三段监控品牌筛选 → 重新加载数据
+watch(sectionSelectedBrand, () => {
+  if (activeMonitorTab.value === 'three-section') {
+    loadSectionChartData()
+  }
+})
+
+// ── Brand options ────────────────────────────────────────────
+const allBrandOptions = computed(() => {
+  const brands = new Set()
+  chartData.value.forEach(item => { if (item.brand) brands.add(item.brand) })
+  overallChartData.value.forEach(item => { if (item.brand) brands.add(item.brand) })
+  return Array.from(brands).sort((a, b) => a.localeCompare(b, 'zh-Hans-CN'))
+})
+
 // ── Data fetching ─────────────────────────────────────────────
 const getTimeParams = () => {
   if (!dateRange.value) return {}
@@ -230,7 +246,9 @@ const loadSectionSummary = async () => {
 
 const loadSectionChartData = async () => {
   try {
-    const res = await request.get('/chart/brand-status', { params: { ...getTimeParams(), type: 'three-section' } })
+    const res = await request.get('/chart/brand-status', {
+      params: { ...getTimeParams(), type: 'three-section', brandName: sectionSelectedBrand.value || undefined }
+    })
     sectionChartData.value = res || []
   } catch (error) {
     console.error('加载三段图表失败:', error)

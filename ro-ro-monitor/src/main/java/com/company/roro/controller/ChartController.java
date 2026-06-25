@@ -29,7 +29,8 @@ public class ChartController {
             @RequestParam(name = "startTime", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startTime,
             @RequestParam(name = "endTime", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endTime,
             @RequestParam(name = "type", required = false, defaultValue = "segment") String type,
-            @RequestParam(name = "sectionName", required = false) String sectionName) {
-        return Result.success(chartDataService.getBrandStatusChart(startTime, endTime, type, sectionName));
+            @RequestParam(name = "sectionName", required = false) String sectionName,
+            @RequestParam(name = "brandName", required = false) String brandName) {
+        return Result.success(chartDataService.getBrandStatusChart(startTime, endTime, type, sectionName, brandName));
     }
 }

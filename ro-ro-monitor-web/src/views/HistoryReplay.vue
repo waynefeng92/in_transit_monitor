@@ -17,13 +17,14 @@
     <section class="replay-controls">
       <div class="replay-timeline">
         <el-slider
+          v-if="snapshotList.length > 0"
           v-model="currentIndex"
           :min="0"
           :max="snapshotList.length - 1"
-          :disabled="snapshotList.length === 0"
           :format-tooltip="formatTimestamp"
           show-stops
         />
+        <div v-else class="timeline-placeholder">暂无快照数据</div>
       </div>
       <div class="replay-buttons">
         <el-button-group>
@@ -88,10 +89,10 @@
         </div>
         <div class="chart-layout">
           <div class="chart-card chart-card-bar">
-            <StackedBarChart :chartData="currentChartData" height="460px" />
+            <StackedBarChart :chartData="currentChartData" height="340px" />
           </div>
           <div class="chart-card chart-card-pie">
-            <StatusPieChart :chartData="currentChartData" height="320px" />
+            <StatusPieChart :chartData="currentChartData" height="260px" />
           </div>
         </div>
       </section>
@@ -222,15 +223,15 @@ loadSnapshots()
   min-height: 100%;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 12px;
 }
 
 .replay-header {
-  margin-bottom: 8px;
+  margin-bottom: 0;
 }
 
 .replay-title {
-  font-size: 24px;
+  font-size: 20px;
   font-weight: 700;
   color: var(--text-primary);
   margin: 0;
@@ -243,24 +244,35 @@ loadSnapshots()
 }
 
 .replay-controls {
-  padding: 16px 20px;
+  padding: 10px 16px;
   border-radius: var(--radius-lg);
   border: 1px solid var(--color-primary-lightest);
   background: var(--card-gradient);
 }
 
 .replay-timeline {
-  margin-bottom: 12px;
+  margin-bottom: 6px;
+}
+
+.timeline-placeholder {
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  font-size: 14px;
+  background: var(--bg-secondary, #f5f7fa);
+  border-radius: 6px;
 }
 
 .replay-buttons {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
 }
 
 .replay-info {
-  margin-top: 12px;
+  margin-top: 6px;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -271,12 +283,12 @@ loadSnapshots()
 .dashboard-summary {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 16px;
+  gap: 10px;
 }
 
 .summary-card {
   position: relative;
-  padding: 22px 24px;
+  padding: 12px 16px;
   border-radius: var(--radius-lg);
   background: linear-gradient(180deg, #fff, var(--color-primary-bg));
   box-shadow: 0 4px 12px rgba(26, 65, 122, 0.06);
@@ -313,13 +325,13 @@ loadSnapshots()
 }
 
 .summary-card__meta {
-  margin-top: 12px;
+  margin-top: 6px;
   font-size: 13px;
   color: var(--text-muted);
 }
 
 .dashboard-panel {
-  padding: 22px 24px 24px;
+  padding: 14px 18px 18px;
   border-radius: var(--radius-xl);
   border: var(--card-border);
   background: var(--card-gradient);
@@ -327,11 +339,11 @@ loadSnapshots()
 }
 
 .panel-header {
-  margin-bottom: 18px;
+  margin-bottom: 10px;
 }
 
 .panel-title {
-  font-size: 20px;
+  font-size: 16px;
   font-weight: 700;
   color: var(--text-primary);
 }
@@ -339,7 +351,7 @@ loadSnapshots()
 .chart-layout {
   display: grid;
   grid-template-columns: minmax(0, 2fr) minmax(320px, 1fr);
-  gap: 20px;
+  gap: 12px;
 }
 
 .chart-card {

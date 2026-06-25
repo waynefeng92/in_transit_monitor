@@ -43,7 +43,7 @@ public class ChartDataService {
      */
     @Transactional(readOnly = true)
     public Object getBrandStatusChart(LocalDateTime startTime, LocalDateTime endTime,
-                                       String type, String sectionName) {
+                                       String type, String sectionName, String filterBrandName) {
         // 1. 查询所有未到达的在途车辆
         LambdaQueryWrapper<VehicleTransit> transitQuery = new LambdaQueryWrapper<VehicleTransit>()
                 .ne(VehicleTransit::getTransportStatus, "ARRIVED");
@@ -100,7 +100,7 @@ public class ChartDataService {
 
         // 如果是三段监控模式
         if ("three-section".equals(type)) {
-            return buildThreeSectionBrandStatus(transitList, orderMap, brandMap, sectionName);
+            return buildThreeSectionBrandStatus(transitList, orderMap, brandMap, sectionName, filterBrandName);
         }
 
         // 6. 分组统计：品牌 → 在途状态（中文） → 监控状态 → 数量
@@ -194,17 +194,21 @@ public class ChartDataService {
     private Object buildThreeSectionBrandStatus(List<VehicleTransit> transitList,
                                                  Map<Integer, OrderInfo> orderMap,
                                                  Map<Integer, String> brandMap,
-                                                 String sectionName) {
+                                                 String sectionName, String filterBrandName) {
         if (sectionName != null && !sectionName.isEmpty()) {
             return buildSectionBrandDrillDown(transitList, orderMap, brandMap, sectionName);
         }
-        return buildSectionLevelAggregation(transitList);
+        return buildSectionLevelAggregation(transitList, orderMap, brandMap, filterBrandName);
     }
 
     /**
      * 段级汇总：前三段（前段/中段/后段）的监控状态统计
      */
-    private List<SectionChartDataDTO> buildSectionLevelAggregation(List<VehicleTransit> transitList) {
+    private List<SectionChartDataDTO> buildSectionLevelAggregation(
+            List<VehicleTransit> transitList,
+            Map<Integer, OrderInfo> orderMap,
+            Map<Integer, String> brandMap,
+            String filterBrandName) {
         Map<String, Map<String, Long>> result = new LinkedHashMap<>();
 
         for (VehicleTransit transit : transitList) {
@@ -215,6 +219,14 @@ public class ChartDataService {
             String monitorStatus = transit.getSectionMonitorStatus();
             if (monitorStatus == null) {
                 monitorStatus = "NORMAL";
+            }
+
+            // 品牌过滤
+            if (filterBrandName != null && !filterBrandName.isEmpty()) {
+                OrderInfo order = orderMap.get(transit.getOrderId());
+                if (order == null) continue;
+                String b = brandMap.getOrDefault(order.getBrandId(), "");
+                if (!filterBrandName.equals(b)) continue;
             }
 
             result.computeIfAbsent(section, k -> new LinkedHashMap<>())

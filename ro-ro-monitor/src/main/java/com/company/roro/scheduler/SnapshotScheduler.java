@@ -60,7 +60,7 @@ public class SnapshotScheduler {
                 snapshot.setSummaryJson(objectMapper.writeValueAsString(summary));
 
                 // 图表数据（品牌-状态分组）
-                Object chartData = chartDataService.getBrandStatusChart(null, null, tabType, null);
+                Object chartData = chartDataService.getBrandStatusChart(null, null, tabType, null, null);
                 snapshot.setChartJson(objectMapper.writeValueAsString(chartData));
 
                 snapshot.setCreatedAt(LocalDateTime.now());

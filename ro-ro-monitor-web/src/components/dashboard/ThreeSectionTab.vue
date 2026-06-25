@@ -49,7 +49,6 @@
 
       <div class="chart-filters">
         <el-select
-          v-if="drillDownSection"
           :model-value="selectedBrand"
           @update:model-value="$emit('update:selectedBrand', $event)"
           clearable filterable placeholder="筛选品牌" class="chart-filter"
@@ -178,7 +177,8 @@ const props = defineProps({
   initialLoading: { type: Boolean, default: true },
   selectedBrand: { type: String, default: '' },
   selectedAlertStatus: { type: String, default: '' },
-  drillDownSection: { type: String, default: null }
+  drillDownSection: { type: String, default: null },
+  allBrandOptions: { type: Array, default: () => [] }
 })
 
 const emit = defineEmits([
@@ -214,10 +214,9 @@ const chartDisplayData = computed(() => {
   }
   return props.sectionChartData
     .filter(item => {
-      const matchBrand = !props.selectedBrand || item.brand === props.selectedBrand
       const metricField = props.selectedAlertStatus ? statusFieldMap[props.selectedAlertStatus] : ''
       const matchAlertStatus = !metricField || Number(item[metricField] || 0) > 0
-      return matchBrand && matchAlertStatus
+      return matchAlertStatus
     })
     .map(d => ({
     brand: d.sectionName,
@@ -231,7 +230,7 @@ const chartDisplayData = computed(() => {
 const pieChartData = computed(() => chartDisplayData.value)
 
 const brandOptions = computed(() => {
-  if (!props.drillDownSection) return []
+  if (!props.drillDownSection) return props.allBrandOptions
   return Array.from(new Set(props.sectionBrandChartData.map(item => item.brand).filter(Boolean))).sort((a, b) =>
     a.localeCompare(b, 'zh-Hans-CN')
   )
