@@ -94,32 +94,37 @@ mkdir -p "$BUILD_DIR/scripts"
 cp "$PROJECT_ROOT/deploy-win.bat" "$BUILD_DIR/"
 cp "$PROJECT_ROOT/scripts/register-service.bat" "$BUILD_DIR/scripts/"
 
-# Generate env.bat template
-cat > "$BUILD_DIR/env.bat" << 'ENVBAT'
-@echo off
-REM ===========================================================================
-REM env.bat — Environment variable configuration
-REM Edit values after deploying to D:\in_transit_monitorREM ===========================================================================
-
-REM JDK 17 path
-set JAVA_HOME=C:\Program Files\Java\jdk-17
-
-REM Database connection
-set DB_HOST=localhost
-set DB_PORT=3307
-set DB_NAME=ro_ro_monitor
-set DB_USERNAME=roro_app
-set DB_PASSWORD=CHANGE_ME
-
-REM Admin default password (change after first login)
-set ADMIN_DEFAULT_PASSWORD=CHANGE_ME
-
-REM CORS allowed origins (server IP or domain)
-set CORS_ALLOWED_ORIGINS=http://localhost
-
-REM Backend server port
-set SERVER_PORT=8080
-ENVBAT
+# Generate env.bat template with CRLF line endings (cmd.exe requirement)
+python3 -c "
+lines = [
+    '@echo off',
+    'REM ===========================================================================',
+    'REM env.bat — Environment variable configuration',
+    'REM Edit values after deploying to D:\\in_transit_monitor\\',
+    'REM ===========================================================================',
+    '',
+    'REM JDK 17 path',
+    'set JAVA_HOME=C:\\Program Files\\Java\\jdk-17',
+    '',
+    'REM Database connection',
+    'set DB_HOST=localhost',
+    'set DB_PORT=3307',
+    'set DB_NAME=ro_ro_monitor',
+    'set DB_USERNAME=roro_app',
+    'set DB_PASSWORD=CHANGE_ME',
+    '',
+    'REM Admin default password (change after first login)',
+    'set ADMIN_DEFAULT_PASSWORD=CHANGE_ME',
+    '',
+    'REM CORS allowed origins (server IP or domain)',
+    'set CORS_ALLOWED_ORIGINS=http://localhost',
+    '',
+    'REM Backend server port',
+    'set SERVER_PORT=8080',
+]
+with open('$BUILD_DIR/env.bat', 'wb') as f:
+    f.write('\r\n'.join(lines).encode('ascii') + b'\r\n')
+"
 
 
 # -- Step 5: Package zip --
