@@ -3,14 +3,8 @@ import { useAuthStore } from '@/stores/auth'
 
 const routes = [
   {
-    path: '/login',
-    name: 'Login',
-    component: () => import('@/views/Login.vue'),
-    meta: { title: '登录' }
-  },
-  {
     path: '/',
-    redirect: '/dashboard/in-transit'
+    redirect: '/login'
   },
   {
     path: '/login',
@@ -90,6 +84,12 @@ const routes = [
     meta: { title: '地点别名' }
   },
   {
+    path: '/vehicle-detail',
+    name: 'VehicleDetail',
+    component: () => import('@/views/VehicleDetail.vue'),
+    meta: { title: '车辆详情' }
+  },
+  {
     path: '/:pathMatch(.*)*',
     name: 'NotFound',
     component: () => import('@/components/NotFound.vue'),
@@ -97,12 +97,14 @@ const routes = [
   }
 ]
 
+let authChecked = false
+
 const router = createRouter({
   history: createWebHistory(),
   routes
 })
 
-router.beforeEach((to, from) => {
+router.beforeEach(async (to, from) => {
   // Set page title
   document.title = to.meta.title ? `${to.meta.title} - 在途车辆监控系统` : '在途车辆监控系统'
 
@@ -111,12 +113,20 @@ router.beforeEach((to, from) => {
   // requiresAuth defaults to true if not set
   const requiresAuth = to.meta.requiresAuth !== false
 
+  // Check auth on first navigation
+  if (!authChecked) {
+    authChecked = true
+    await authStore.checkAuth()
+  }
+
   if (requiresAuth && !authStore.isAuthenticated) {
     return { name: 'Login' }
   }
   if (to.name === 'Login' && authStore.isAuthenticated) {
     return { path: '/dashboard/in-transit' }
   }
+
+
 })
 
 export default router

@@ -44,8 +44,6 @@ services:
     volumes:
       - backend-logs:/app/logs
       - backend-uploads:/app/uploads
-    ports:
-      - "18080:8080"
     networks:
       - roro-net
     restart: unless-stopped

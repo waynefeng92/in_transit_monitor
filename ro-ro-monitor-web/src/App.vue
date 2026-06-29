@@ -1,5 +1,11 @@
 <template>
   <div id="app">
+    <template v-if="!route.name || route.name === 'Login' || route.name === 'NotFound'">
+      <router-view />
+    </template>
+
+    <!-- Authenticated: full layout with sidebar -->
+    <template v-else>
     <!-- Mobile drawer backdrop -->
     <transition name="backdrop-fade">
       <div
@@ -42,6 +48,10 @@
             <el-menu-item index="/dashboard/history-replay">
               <el-icon><VideoPlay /></el-icon>
               <span>历史回放</span>
+            </el-menu-item>
+            <el-menu-item index="/vehicle-detail">
+              <el-icon><Search /></el-icon>
+              <span>车辆详情</span>
             </el-menu-item>
           </el-sub-menu>
           <!-- 数据管理子菜单 -->
@@ -120,13 +130,13 @@
         </el-main>
       </el-container>
     </el-container>
+    </template>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRoute } from 'vue-router'
-
 const route = useRoute()
 const isCollapse = ref(false)
 const isMobile = ref(false)

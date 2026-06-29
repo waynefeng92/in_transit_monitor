@@ -30,7 +30,7 @@
     <!-- Actions -->
     <div class="action-bar">
       <el-button type="danger" :disabled="selectedRows.length === 0" @click="handleBatchCancel">
-        <el-icon><Delete /></el-icon> 批量取消（{{ selectedRows.length }}）
+        <el-icon><Delete /></el-icon> 批量删除（{{ selectedRows.length }}）
       </el-button>
       <el-button @click="handleExport" :loading="exporting">
         <el-icon><Download /></el-icon> 导出全部
@@ -66,9 +66,10 @@
             <span v-else style="color:var(--text-muted)">-</span>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="100" fixed="right">
+        <el-table-column label="操作" width="140" fixed="right">
           <template #default="{ row }">
-            <el-button text type="danger" size="small" @click="handleCancelOne(row.orderId)">取消</el-button>
+            <el-button type="primary" link size="small" @click="handleViewDetail(row)">详情</el-button>
+            <el-button text type="danger" size="small" @click="handleCancelOne(row.orderId)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -84,11 +85,13 @@
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Delete, Download } from '@element-plus/icons-vue'
 import { getOrderList, batchCancelOrders, exportOrders } from '@/api/order'
 import { getBrandList } from '@/api/brand'
 
+const router = useRouter()
 const brandList = ref([])
 const records = ref([])
 const total = ref(0)
@@ -186,13 +189,13 @@ const handleSelectChange = (rows) => {
 const handleBatchCancel = async () => {
   try {
     await ElMessageBox.confirm(
-      `确认取消选中的 ${selectedRows.value.length} 个订单？取消后订单和关联的在途记录将被删除。`,
-      '批量取消确认',
-      { type: 'warning', confirmButtonText: '确认取消' }
+      `确认删除选中的 ${selectedRows.value.length} 个订单？删除后订单和关联的在途记录将被删除。`,
+      '批量删除确认',
+      { type: 'warning', confirmButtonText: '确认删除' }
     )
     const ids = selectedRows.value.map(r => r.orderId)
     const res = await batchCancelOrders(ids)
-    ElMessage.success(`成功取消 ${res.successCount} 个订单`)
+    ElMessage.success(`成功删除 ${res.successCount} 个订单`)
     search()
   } catch {
     // user cancelled
@@ -202,16 +205,20 @@ const handleBatchCancel = async () => {
 const handleCancelOne = async (orderId) => {
   try {
     await ElMessageBox.confirm(
-      '确认取消该订单？取消后订单和关联的在途记录将被删除。',
-      '确认取消',
+      '确认删除该订单？删除后订单和关联的在途记录将被删除。',
+      '确认删除',
       { type: 'warning' }
     )
     const res = await batchCancelOrders([orderId])
-    ElMessage.success('已取消')
+    ElMessage.success('已删除')
     search()
   } catch {
     // user cancelled
   }
+}
+
+const handleViewDetail = (row) => {
+  router.push('/vehicle-detail?vin=' + row.vin)
 }
 
 const handleExport = async () => {
@@ -245,7 +252,7 @@ onMounted(() => {
   getBrandList().then(list => {
     brandList.value = list
   }).catch(() => {})
-  search()
+  // 不自动查询，等用户点击搜索
 })
 </script>
 

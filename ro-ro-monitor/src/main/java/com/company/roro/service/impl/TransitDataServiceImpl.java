@@ -249,8 +249,12 @@ public class TransitDataServiceImpl implements TransitDataService {
             order.setIsActive(1);
             orderInfoService.save(order);
         } else {
-            // 存在则更新出发地/目的地（如果 Excel 中有新值）
+            // 存在则更新出发地/目的地/订单释放时间（如果 Excel 中有新值）
             boolean needUpdate = false;
+            if (row.getOrderReleaseTime() != null && !row.getOrderReleaseTime().equals(order.getOrderReleaseTime())) {
+                order.setOrderReleaseTime(row.getOrderReleaseTime());
+                needUpdate = true;
+            }
             if (StrUtil.isNotBlank(row.getOriginCity()) && !row.getOriginCity().equals(order.getOriginCity())) {
                 order.setOriginCity(row.getOriginCity());
                 needUpdate = true;
