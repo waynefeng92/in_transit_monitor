@@ -129,9 +129,10 @@ with open('$BUILD_DIR/env.bat', 'wb') as f:
 
 # -- Step 5: Package zip --
 info "打包 roro-windows-deploy.zip..."
+cd "$BUILD_DIR"
+rm -f "$PROJECT_ROOT/scripts/roro-windows-deploy.zip"
+zip -r "$PROJECT_ROOT/scripts/roro-windows-deploy.zip" .
 cd "$PROJECT_ROOT/scripts"
-rm -f roro-windows-deploy.zip
-zip -r roro-windows-deploy.zip build-windows/
 rm -rf "$BUILD_DIR"
 
 info "✅ 完成！产出文件: scripts/roro-windows-deploy.zip"
