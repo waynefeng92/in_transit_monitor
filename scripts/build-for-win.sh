@@ -89,9 +89,15 @@ if [ -f "$SQL_SRC" ]; then
     cp "$SQL_SRC" "$BUILD_DIR/sql/"
 fi
 
+# Copy deployment scripts (deploy-win.bat + register-service.bat)
+mkdir -p "$BUILD_DIR/scripts"
+cp "$PROJECT_ROOT/deploy-win.bat" "$BUILD_DIR/"
+cp "$PROJECT_ROOT/scripts/register-service.bat" "$BUILD_DIR/scripts/"
+
 # Generate env.bat template
 cat > "$BUILD_DIR/env.bat" << 'ENVBAT'
 @echo off
+chcp 65001 >nul
 REM ===========================================================================
 REM env.bat — 环境变量配置模板
 REM 使用前复制到 D:\in_transit_monitor\ 并按实际环境修改变量值

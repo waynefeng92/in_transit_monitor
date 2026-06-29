@@ -1,4 +1,5 @@
 @echo off
+chcp 65001 >nul
 REM ===========================================================================
 REM register-service.bat — NSSM 服务注册脚本
 REM 功能：将 Spring Boot JAR 注册为 Windows 服务，开机自启 + 崩溃自动重启
