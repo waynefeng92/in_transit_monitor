@@ -136,10 +136,16 @@ netsh advfirewall firewall add rule name="RoRo-MySQL(3307-block)" dir=in action=
 
 ### 3.1 在开发机上导出基础数据
 
+`build-for-win.sh` 会自动调用导出，**无需单独运行**。执行时弹出一次密码输入，10 张表一次性导出。
+
 ```bash
-# 开发机（Linux/macOS）
 cd /path/to/in_transit_monitor
-bash scripts/export-master-data.sh -h localhost -u root -p -P 3306 -o master-data.sql
+bash scripts/build-for-win.sh
+```
+
+如需单独导出（不构建），可手动运行：
+```bash
+bash scripts/export-master-data.sh -h localhost -u root -P 3306 -o master-data.sql
 ```
 
 导出内容（10 张表）：
