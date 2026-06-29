@@ -41,16 +41,16 @@ done
 command -v mysqldump >/dev/null 2>&1 || { error "mysqldump 未安装"; exit 1; }
 
 # —— Build connection args ——
-CONN_ARGS="-h $DB_HOST -P $DB_PORT -u $DB_USER"
-if [ -n "$DB_PASS" ]; then
-    CONN_ARGS="$CONN_ARGS -p$DB_PASS"
-else
-    CONN_ARGS="$CONN_ARGS -p"
+# If no password given, prompt once at the start
+if [ -z "$DB_PASS" ]; then
+    read -s -p "MySQL 密码: " DB_PASS
+    echo ""
 fi
+MYSQL_ARGS="-h $DB_HOST -P $DB_PORT -u $DB_USER -p$DB_PASS"
 
 # —— Test connection ——
 info "测试数据库连接..."
-mysql $CONN_ARGS -e "SELECT 1" >/dev/null 2>&1 || { error "无法连接到 MySQL $DB_HOST:$DB_PORT"; exit 1; }
+mysql $MYSQL_ARGS -e "SELECT 1" >/dev/null 2>&1 || { error "无法连接到 MySQL $DB_HOST:$DB_PORT"; exit 1; }
 info "连接成功"
 
 # —— Master data tables (10) ——
@@ -96,24 +96,19 @@ HEADER
 
 # Export each table
 SUMMARY=""
-for table in "${TABLES[@]}"; do
-    info "导出表: $table"
-    echo "" >> "$OUTPUT_FILE"
-    echo "-- Table: $table" >> "$OUTPUT_FILE"
-    echo "" >> "$OUTPUT_FILE"
+info "导出全部 ${#TABLES[@]} 张基础信息表..."
 
-    if mysqldump $CONN_ARGS $MYSQLDUMP_ARGS "$DB_NAME" "$table" >> "$OUTPUT_FILE" 2>/dev/null; then
-        # Count rows
-        row_count=$(mysql $CONN_ARGS -N -e "SELECT COUNT(*) FROM $table" "$DB_NAME" 2>/dev/null || echo "?")
+if mysqldump $MYSQL_ARGS $MYSQLDUMP_ARGS "$DB_NAME" ${TABLES[@]} >> "$OUTPUT_FILE" 2>/dev/null; then
+    # Count rows per table (no password prompt — already authenticated)
+    for table in "${TABLES[@]}"; do
+        row_count=$(mysql $MYSQL_ARGS -N -e "SELECT COUNT(*) FROM $table" "$DB_NAME" 2>/dev/null || echo "?")
         SUMMARY="$SUMMARY  - $table: $row_count 行\n"
-        info "  → 已导出 $row_count 行"
-    else
-        warn "  → 导出 $table 失败，跳过"
-        SUMMARY="$SUMMARY  - $table: 导出失败\n"
-    fi
-
-    echo "" >> "$OUTPUT_FILE"
-done
+        info "  → $table: $row_count 行"
+    done
+else
+    error "mysqldump 失败，请检查数据库连接和权限"
+    exit 1
+fi
 
 # Write footer (restore FK checks)
 cat >> "$OUTPUT_FILE" << 'FOOTER'
