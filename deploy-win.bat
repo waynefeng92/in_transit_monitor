@@ -88,24 +88,20 @@ if exist "%DATA_DIR%\master-data.sql" (
 )
 
 echo.
-echo [STEP 4/7] Deploying backend JAR...
-if not exist "%BACKEND_DIR%" mkdir "%BACKEND_DIR%"
-copy /Y "%~dp0backend\ro-ro-monitor.jar" "%BACKEND_DIR%\ro-ro-monitor.jar"
-if !errorlevel! neq 0 (
-    echo [ERROR] Backend JAR deployment failed!
+echo.
+echo [STEP 4/7] Verifying backend JAR...
+if not exist "%BACKEND_DIR%\ro-ro-monitor.jar" (
+    echo [ERROR] Backend JAR not found! Check zip extraction.
     pause
     exit /b 1
 )
-echo [OK] Backend JAR deployed
-
+echo [OK] Backend JAR in place
 echo.
-echo [STEP 5/7] Deploying frontend files...
-if not exist "%FRONTEND_DIR%" mkdir "%FRONTEND_DIR%"
-xcopy /E /Y "%~dp0frontend\*.*" "%FRONTEND_DIR%\"
-if !errorlevel! neq 0 (
-    echo [WARN] Frontend deployment may be incomplete
+echo [STEP 5/7] Verifying frontend files...
+if not exist "%FRONTEND_DIR%\index.html" (
+    echo [WARN] frontend/index.html not found! Check zip extraction.
 )
-echo [OK] Frontend files deployed
+echo [OK] Frontend files in place
 
 echo.
 echo [STEP 6/7] Registering NSSM service...
