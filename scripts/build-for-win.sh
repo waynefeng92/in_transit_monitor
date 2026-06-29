@@ -100,7 +100,7 @@ lines = [
     '@echo off',
     'REM ===========================================================================',
     'REM env.bat — Environment variable configuration',
-    'REM Edit values after deploying to D:\\in_transit_monitor\\',
+    'REM Edit values before running deploy-win.bat',
     'REM ===========================================================================',
     '',
     'REM JDK 17 path',
