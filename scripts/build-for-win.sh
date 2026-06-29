@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ============================================================================
-# build-for-win.sh — 开发机构建脚本（在开发机 Linux/macOS 上运行）
+# build-for-win.sh -- 开发机构建脚本（在开发机 Linux/macOS 上运行）
 # 功能：构建后端 JAR + 前端 dist + 导出基础数据 → 打包 roro-windows-deploy.zip
 # 使用：bash scripts/build-for-win.sh
 # 依赖：mvn, npm, zip, mysqldump
@@ -28,7 +28,7 @@ info "检查依赖工具..."
 command -v mvn >/dev/null 2>&1 || { error "mvn 未安装，请先安装 Maven"; exit 1; }
 command -v npm >/dev/null 2>&1 || { error "npm 未安装，请先安装 Node.js"; exit 1; }
 command -v zip >/dev/null 2>&1 || { error "zip 未安装，请先安装 zip"; exit 1; }
-command -v mysqldump >/dev/null 2>&1 || warn "mysqldump 未找到 — export-master-data.sh 可能无法执行，可后续手动导出"
+command -v mysqldump >/dev/null 2>&1 || warn "mysqldump 未找到 -- export-master-data.sh 可能无法执行，可后续手动导出"
 info "依赖检查通过"
 
 # -- Step 1: Build backend JAR --
@@ -99,7 +99,7 @@ python3 -c "
 lines = [
     '@echo off',
     'REM ===========================================================================',
-    'REM env.bat — Environment variable configuration',
+    'REM env.bat -- Environment variable configuration',
     'REM Edit values before running deploy-win.bat',
     'REM ===========================================================================',
     '',
