@@ -34,9 +34,11 @@ echo =============================================
 echo Deploy path: %RORO_HOME%
 
 REM -- First deploy or iterative update? --
-if not exist "%RORO_HOME%\.first_deploy_done" (
+REM Check if database exists (more reliable than file check)
+%MYSQL_CMD% -e "USE %DB_NAME%" 2>nul
+if errorlevel 1 (
     echo =============================================
-    echo   FIRST DEPLOY MODE
+    echo   FIRST DEPLOY MODE (database not found)
     echo =============================================
     goto :first_deploy
 ) else (
