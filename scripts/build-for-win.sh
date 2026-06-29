@@ -8,13 +8,13 @@
 
 set -euo pipefail
 
-# —— Configurable paths ——
+# -- Configurable paths --
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BACKEND_DIR="$PROJECT_ROOT/ro-ro-monitor"
 FRONTEND_DIR="$PROJECT_ROOT/ro-ro-monitor-web"
 BUILD_DIR="$PROJECT_ROOT/scripts/build-windows"
 
-# —— Color output ——
+# -- Color output --
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 RED='\033[0;31m'
@@ -23,7 +23,7 @@ info()  { echo -e "${GREEN}[INFO]${NC} $1"; }
 warn()  { echo -e "${YELLOW}[WARN]${NC} $1"; }
 error() { echo -e "${RED}[ERROR]${NC} $1"; }
 
-# —— Step 0: Check required tools ——
+# -- Step 0: Check required tools --
 info "检查依赖工具..."
 command -v mvn >/dev/null 2>&1 || { error "mvn 未安装，请先安装 Maven"; exit 1; }
 command -v npm >/dev/null 2>&1 || { error "npm 未安装，请先安装 Node.js"; exit 1; }
@@ -31,7 +31,7 @@ command -v zip >/dev/null 2>&1 || { error "zip 未安装，请先安装 zip"; ex
 command -v mysqldump >/dev/null 2>&1 || warn "mysqldump 未找到 — export-master-data.sh 可能无法执行，可后续手动导出"
 info "依赖检查通过"
 
-# —— Step 1: Build backend JAR ——
+# -- Step 1: Build backend JAR --
 info "构建后端 JAR..."
 cd "$BACKEND_DIR"
 mvn clean package -DskipTests -P prod
@@ -48,13 +48,13 @@ if [ ! -f "$JAR_SRC" ]; then
 fi
 info "后端构建完成"
 
-# —— Step 2: Build frontend dist ——
+# -- Step 2: Build frontend dist --
 info "构建前端 dist..."
 cd "$FRONTEND_DIR"
 npm run build
 info "前端构建完成"
 
-# —— Step 3: Export master data ——
+# -- Step 3: Export master data --
 info "导出基础数据..."
 cd "$PROJECT_ROOT"
 if [ -f "scripts/export-master-data.sh" ]; then
@@ -63,7 +63,7 @@ else
     warn "export-master-data.sh 不存在，跳过数据导出"
 fi
 
-# —— Step 4: Create build directory ——
+# -- Step 4: Create build directory --
 info "组装部署包..."
 rm -rf "$BUILD_DIR"
 mkdir -p "$BUILD_DIR/backend"
@@ -121,7 +121,7 @@ REM Backend server port
 set SERVER_PORT=8080
 ENVBAT
 
-# —— Step 5: Package zip ——
+# -- Step 5: Package zip --
 info "打包 roro-windows-deploy.zip..."
 cd "$PROJECT_ROOT/scripts"
 rm -f roro-windows-deploy.zip

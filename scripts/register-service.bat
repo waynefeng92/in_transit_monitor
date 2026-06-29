@@ -1,6 +1,6 @@
 @echo off
 REM ===========================================================================
-REM register-service.bat — NSSM Service Registration
+REM register-service.bat -- NSSM Service Registration
 REM Run as Administrator on Windows Server
 REM Prerequisites: NSSM installed, JDK 17 installed
 REM ===========================================================================
@@ -15,7 +15,7 @@ echo   Ro-Ro Vehicle Monitor - Service Registration
 echo =============================================
 echo.
 
-REM —— Check NSSM ——
+REM -- Check NSSM --
 echo [STEP 1/4] Checking NSSM...
 where nssm >nul 2>&1
 if errorlevel 1 (
@@ -34,7 +34,7 @@ if errorlevel 1 (
 )
 echo [OK] NSSM ready
 
-REM —— Check JDK ——
+REM -- Check JDK --
 echo.
 echo [STEP 2/4] Checking JDK 17...
 if "%JDK_PATH%"=="" set JDK_PATH=C:\Program Files\Java\jdk-17
@@ -48,7 +48,7 @@ if not exist "%JDK_PATH%\bin\java.exe" (
 )
 echo [OK] JDK path: %JDK_PATH%
 
-REM —— Check existing service ——
+REM -- Check existing service --
 echo.
 echo [STEP 3/4] Checking service status...
 nssm status %SERVICE_NAME% >nul 2>&1
@@ -68,7 +68,7 @@ if errorlevel 1 (
     echo Service already registered - updating config...
 )
 
-REM —— Configure service ——
+REM -- Configure service --
 echo.
 echo [STEP 4/4] Configuring service...
 
@@ -80,7 +80,7 @@ nssm set %SERVICE_NAME% DisplayName "RoRo Monitor Backend"
 nssm set %SERVICE_NAME% Description "Ro-Ro Vehicle Monitor Backend Service"
 nssm set %SERVICE_NAME% Start SERVICE_AUTO_START
 
-REM —— Environment variables ——
+REM -- Environment variables --
 nssm set %SERVICE_NAME% AppEnvironmentExtra ^
     DB_HOST=localhost ^
     DB_PORT=3307 ^
@@ -92,13 +92,13 @@ nssm set %SERVICE_NAME% AppEnvironmentExtra ^
     SERVER_PORT=8080 ^
     TZ=Asia/Shanghai
 
-REM —— Auto-restart on crash ——
+REM -- Auto-restart on crash --
 nssm set %SERVICE_NAME% AppThrottle 5000
 nssm set %SERVICE_NAME% AppRestartDelay 10000
 
 echo [OK] Service configured
 
-REM —— Start service ——
+REM -- Start service --
 echo.
 echo Starting service...
 nssm start %SERVICE_NAME%
@@ -109,7 +109,7 @@ if errorlevel 1 (
     echo [OK] Service started
 )
 
-REM —— Status ——
+REM -- Status --
 echo.
 echo =============================================
 nssm status %SERVICE_NAME%

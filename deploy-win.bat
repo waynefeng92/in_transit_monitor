@@ -1,6 +1,6 @@
 @echo off
 REM ===========================================================================
-REM deploy-win.bat — Windows Server Deployment / Update Script
+REM deploy-win.bat -- Windows Server Deployment / Update Script
 REM Run as Administrator on Windows Server
 REM First run: initialize database + deploy application
 REM Subsequent: backup old version -> stop -> replace -> start
@@ -8,7 +8,7 @@ REM ===========================================================================
 
 setlocal enabledelayedexpansion
 
-REM —— Paths ——
+REM -- Paths --
 set RORO_HOME=D:\in_transit_monitor
 set BACKEND_DIR=%RORO_HOME%\backend
 set FRONTEND_DIR=%RORO_HOME%\frontend
@@ -16,7 +16,7 @@ set BACKUP_DIR=%RORO_HOME%\backups
 set SQL_DIR=%RORO_HOME%\sql
 set DATA_DIR=%RORO_HOME%\data
 
-REM —— Load env.bat ——
+REM -- Load env.bat --
 if exist "%RORO_HOME%\env.bat" (
     echo [INFO] Loading env.bat
     call "%RORO_HOME%\env.bat"
@@ -24,7 +24,7 @@ if exist "%RORO_HOME%\env.bat" (
     echo [WARN] env.bat not found, using defaults
 )
 
-REM —— MySQL connection args ——
+REM -- MySQL connection args --
 set MYSQL_CMD=mysql -u root -p%DB_PASSWORD% -P %DB_PORT% -h %DB_HOST%
 set MYSQL_IMPORT=mysql -u root -p%DB_PASSWORD% -P %DB_PORT% -h %DB_HOST% %DB_NAME%
 
@@ -33,7 +33,7 @@ echo   Ro-Ro Vehicle Monitor - Deployment Script
 echo =============================================
 echo Deploy path: %RORO_HOME%
 
-REM —— First deploy or iterative update? ——
+REM -- First deploy or iterative update? --
 if not exist "%BACKEND_DIR%\ro-ro-monitor.jar" (
     echo =============================================
     echo   FIRST DEPLOY MODE
