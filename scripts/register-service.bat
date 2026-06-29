@@ -50,7 +50,7 @@ echo [OK] JDK path: %JDK_PATH%
 
 REM -- Check existing service --
 echo.
-echo [STEP 3/4] Checking service status...
+echo [STEP 4/5] Checking service status...
 nssm status %SERVICE_NAME% >nul 2>&1
 if errorlevel 1 (
     echo Service not registered - installing...
@@ -70,7 +70,7 @@ if errorlevel 1 (
 
 REM -- Configure service --
 echo.
-echo [STEP 4/4] Configuring service...
+echo [STEP 5/5] Configuring service...
 
 nssm set %SERVICE_NAME% AppParameters "-jar %RORO_HOME%\backend\ro-ro-monitor.jar --spring.profiles.active=prod"
 if errorlevel 1 echo [WARN] AppParameters failed
@@ -82,14 +82,14 @@ nssm set %SERVICE_NAME% Start SERVICE_AUTO_START
 
 REM -- Environment variables --
 nssm set %SERVICE_NAME% AppEnvironmentExtra ^
-    DB_HOST=localhost ^
-    DB_PORT=3307 ^
-    DB_NAME=ro_ro_monitor ^
-    DB_USERNAME=roro_app ^
-    DB_PASSWORD=CHANGE_ME ^
-    ADMIN_DEFAULT_PASSWORD=CHANGE_ME ^
-    CORS_ALLOWED_ORIGINS=http://localhost ^
-    SERVER_PORT=8080 ^
+    DB_HOST=%DB_HOST% ^
+    DB_PORT=%DB_PORT% ^
+    DB_NAME=%DB_NAME% ^
+    DB_USERNAME=%DB_USERNAME% ^
+    DB_PASSWORD=%DB_PASSWORD% ^
+    ADMIN_DEFAULT_PASSWORD=%ADMIN_DEFAULT_PASSWORD% ^
+    CORS_ALLOWED_ORIGINS=%CORS_ALLOWED_ORIGINS% ^
+    SERVER_PORT=%SERVER_PORT% ^
     TZ=Asia/Shanghai
 
 REM -- Auto-restart on crash --
