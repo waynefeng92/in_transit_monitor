@@ -24,7 +24,7 @@ if errorlevel 1 (
     echo Extract to: %RORO_HOME%\nssm\
     REM Try default location
     if exist "%RORO_HOME%\nssm\win64\nssm.exe" (
-        set PATH=%PATH%;%RORO_HOME%\nssm\win64
+        set "PATH=%PATH%;%RORO_HOME%\nssm\win64"
         echo Found NSSM at: %RORO_HOME%\nssm\win64\nssm.exe
     ) else (
         echo [ERROR] NSSM not available - please install first
