@@ -34,7 +34,7 @@ echo =============================================
 echo Deploy path: %RORO_HOME%
 
 REM -- First deploy or iterative update? --
-if not exist "%BACKEND_DIR%\ro-ro-monitor.jar" (
+if not exist "%RORO_HOME%\.first_deploy_done" (
     echo =============================================
     echo   FIRST DEPLOY MODE
     echo =============================================
@@ -122,6 +122,7 @@ echo =============================================
 echo   First deploy complete!
 echo   Open http://localhost in browser to verify
 echo =============================================
+echo deployed > "%RORO_HOME%\.first_deploy_done"
 goto :end
 
 REM ===========================================================================
