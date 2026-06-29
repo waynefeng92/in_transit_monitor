@@ -97,29 +97,27 @@ cp "$PROJECT_ROOT/scripts/register-service.bat" "$BUILD_DIR/scripts/"
 # Generate env.bat template
 cat > "$BUILD_DIR/env.bat" << 'ENVBAT'
 @echo off
-chcp 65001 >nul
 REM ===========================================================================
-REM env.bat — 环境变量配置模板
-REM 使用前复制到 D:\in_transit_monitor\ 并按实际环境修改变量值
-REM ===========================================================================
+REM env.bat — Environment variable configuration
+REM Edit values after deploying to D:\in_transit_monitorREM ===========================================================================
 
-REM JDK 17 路径（若 JDK 在其他路径请修改）
+REM JDK 17 path
 set JAVA_HOME=C:\Program Files\Java\jdk-17
 
-REM 数据库连接配置
+REM Database connection
 set DB_HOST=localhost
 set DB_PORT=3307
 set DB_NAME=ro_ro_monitor
 set DB_USERNAME=roro_app
 set DB_PASSWORD=CHANGE_ME
 
-REM 管理员初始密码（首次登录后请在系统内修改）
+REM Admin default password (change after first login)
 set ADMIN_DEFAULT_PASSWORD=CHANGE_ME
 
-REM 允许跨域访问的来源（部署服务器的 IP 或域名）
+REM CORS allowed origins (server IP or domain)
 set CORS_ALLOWED_ORIGINS=http://localhost
 
-REM 后端服务端口
+REM Backend server port
 set SERVER_PORT=8080
 ENVBAT
 

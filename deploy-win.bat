@@ -1,16 +1,14 @@
 @echo off
-chcp 65001 >nul
 REM ===========================================================================
-REM deploy-win.bat — Windows Server 部署/更新脚本
-REM 功能：首次部署 — 初始化数据库 + 部署应用
-REM       迭代更新 — 备份旧版 → 停止服务 → 替换文件 → 启动服务
-REM 使用：以管理员身份运行 deploy-win.bat
-REM 注意：首次部署前请先修改 env.bat 中的配置
+REM deploy-win.bat — Windows Server Deployment / Update Script
+REM Run as Administrator on Windows Server
+REM First run: initialize database + deploy application
+REM Subsequent: backup old version -> stop -> replace -> start
 REM ===========================================================================
 
 setlocal enabledelayedexpansion
 
-REM —— 路径配置 ——
+REM —— Paths ——
 set RORO_HOME=D:\in_transit_monitor
 set BACKEND_DIR=%RORO_HOME%\backend
 set FRONTEND_DIR=%RORO_HOME%\frontend
@@ -18,43 +16,42 @@ set BACKUP_DIR=%RORO_HOME%\backups
 set SQL_DIR=%RORO_HOME%\sql
 set DATA_DIR=%RORO_HOME%\data
 
-REM —— 加载环境变量 ——
+REM —— Load env.bat ——
 if exist "%RORO_HOME%\env.bat" (
-    echo [INFO] 加载环境变量: %RORO_HOME%\env.bat
+    echo [INFO] Loading env.bat
     call "%RORO_HOME%\env.bat"
 ) else (
-    echo [WARN] env.bat 不存在，使用默认环境变量
+    echo [WARN] env.bat not found, using defaults
 )
 
-REM —— MySQL 连接参数 ——
+REM —— MySQL connection args ——
 set MYSQL_CMD=mysql -u root -p%DB_PASSWORD% -P %DB_PORT% -h %DB_HOST%
 set MYSQL_IMPORT=mysql -u root -p%DB_PASSWORD% -P %DB_PORT% -h %DB_HOST% %DB_NAME%
 
 echo =============================================
-echo  在途车辆监控系统 — Windows 部署脚本
+echo   Ro-Ro Vehicle Monitor - Deployment Script
 echo =============================================
-echo 部署路径: %RORO_HOME%
-echo 首次部署判断: 检查 %BACKEND_DIR%\ro-ro-monitor.jar
+echo Deploy path: %RORO_HOME%
 
-REM —— 判断首次部署还是迭代更新 ——
+REM —— First deploy or iterative update? ——
 if not exist "%BACKEND_DIR%\ro-ro-monitor.jar" (
     echo =============================================
-    echo  首次部署模式
+    echo   FIRST DEPLOY MODE
     echo =============================================
     goto :first_deploy
 ) else (
     echo =============================================
-    echo  迭代更新模式
+    echo   ITERATIVE UPDATE MODE
     echo =============================================
     goto :iterative_update
 )
 
 REM ===========================================================================
-REM 首次部署
+REM FIRST DEPLOY
 REM ===========================================================================
 :first_deploy
 echo.
-echo [STEP 1/7] 创建目录结构...
+echo [STEP 1/7] Creating directory structure...
 if not exist "%BACKEND_DIR%" mkdir "%BACKEND_DIR%"
 if not exist "%FRONTEND_DIR%" mkdir "%FRONTEND_DIR%"
 if not exist "%BACKUP_DIR%" mkdir "%BACKUP_DIR%"
@@ -62,86 +59,85 @@ if not exist "%RORO_HOME%\logs" mkdir "%RORO_HOME%\logs"
 echo [OK]
 
 echo.
-echo [STEP 2/7] 初始化数据库（以 root 执行 DDL）...
-echo ⚠️  将执行 0_ro_ro_monitor_full.sql（含 DROP DATABASE），仅首次运行！
+echo [STEP 2/7] Initializing database (DDL - run as MySQL root)...
+echo WARNING: This will run 0_ro_ro_monitor_full.sql (DROP DATABASE IF EXISTS) - first run only!
 if exist "%SQL_DIR%\0_ro_ro_monitor_full.sql" (
     %MYSQL_CMD% < "%SQL_DIR%\0_ro_ro_monitor_full.sql"
     if !errorlevel! neq 0 (
-        echo [ERROR] 建表 DDL 执行失败！请检查 MySQL 连接和密码
+        echo [ERROR] DDL execution failed! Check MySQL connection and password.
         pause
         exit /b 1
     )
-    echo [OK] 数据库表结构创建完成
+    echo [OK] Database schema created
 ) else (
-    echo [WARN] 未找到 0_ro_ro_monitor_full.sql，跳过建表
+    echo [WARN] 0_ro_ro_monitor_full.sql not found, skipping schema creation
 )
 
 echo.
-echo [STEP 3/7] 导入基础数据...
+echo [STEP 3/7] Importing base data...
 if exist "%DATA_DIR%\master-data.sql" (
     %MYSQL_IMPORT% < "%DATA_DIR%\master-data.sql"
     if !errorlevel! neq 0 (
-        echo [ERROR] 基础数据导入失败！
+        echo [ERROR] Base data import failed!
         pause
         exit /b 1
     )
-    echo [OK] 基础数据导入完成
+    echo [OK] Base data imported
 ) else (
-    echo [WARN] 未找到 master-data.sql，跳过基础数据导入
+    echo [WARN] master-data.sql not found, skipping data import
 )
 
 echo.
-echo [STEP 4/7] 部署后端 JAR...
+echo [STEP 4/7] Deploying backend JAR...
 if not exist "%BACKEND_DIR%" mkdir "%BACKEND_DIR%"
 copy /Y "%~dp0backend\ro-ro-monitor.jar" "%BACKEND_DIR%\ro-ro-monitor.jar"
 if !errorlevel! neq 0 (
-    echo [ERROR] 后端 JAR 部署失败！
+    echo [ERROR] Backend JAR deployment failed!
     pause
     exit /b 1
 )
-echo [OK] 后端 JAR 已部署
+echo [OK] Backend JAR deployed
 
 echo.
-echo [STEP 5/7] 部署前端静态文件...
+echo [STEP 5/7] Deploying frontend files...
 if not exist "%FRONTEND_DIR%" mkdir "%FRONTEND_DIR%"
 xcopy /E /Y "%~dp0frontend\*.*" "%FRONTEND_DIR%\"
 if !errorlevel! neq 0 (
-    echo [WARN] 前端文件部署可能不完整
+    echo [WARN] Frontend deployment may be incomplete
 )
-echo [OK] 前端文件已部署
+echo [OK] Frontend files deployed
 
 echo.
-echo [STEP 6/7] 注册 NSSM 服务...
+echo [STEP 6/7] Registering NSSM service...
 if exist "%~dp0scripts\register-service.bat" (
     call "%~dp0scripts\register-service.bat"
-) else if exist "%RORO_HOME%\register-service.bat" (
-    call "%RORO_HOME%\register-service.bat"
+) else if exist "%RORO_HOME%\scripts\register-service.bat" (
+    call "%RORO_HOME%\scripts\register-service.bat"
 ) else (
-    echo [WARN] register-service.bat 未找到，请手动注册服务
+    echo [WARN] register-service.bat not found, register service manually
 )
 
 echo.
-echo [STEP 7/7] 启动服务并验证...
+echo [STEP 7/7] Starting services and verifying...
 call :start_services
 
 echo.
 echo =============================================
-echo  首次部署完成！
-echo  请通过浏览器访问 http://localhost 验证
+echo   First deploy complete!
+echo   Open http://localhost in browser to verify
 echo =============================================
 goto :end
 
 REM ===========================================================================
-REM 迭代更新
+REM ITERATIVE UPDATE
 REM ===========================================================================
 :iterative_update
 echo.
-echo [STEP 1/7] 备份旧版 JAR...
+echo [STEP 1/7] Backing up current JAR...
 
-REM 生成时间戳（YYYYMMDD_HHMMSS 格式）
+REM Generate timestamp (YYYYMMDD_HHMMSS)
 for /f "tokens=2 delims==" %%I in ('wmic os get localdatetime /value 2^>nul') do set DATETIME=%%I
 if "%DATETIME%"=="" (
-    REM 备用方案
     set DATETIME=%DATE:~0,4%%DATE:~5,2%%DATE:~8,2%_%TIME:~0,2%%TIME:~3,2%%TIME:~6,2%
     set DATETIME=!DATETIME: =0!
 )
@@ -150,90 +146,90 @@ set TIMESTAMP=!DATETIME:~0,8!_!DATETIME:~8,6!
 if not exist "%BACKUP_DIR%" mkdir "%BACKUP_DIR%"
 copy "%BACKEND_DIR%\ro-ro-monitor.jar" "%BACKUP_DIR%\ro-ro-monitor_!TIMESTAMP!.jar"
 if !errorlevel! equ 0 (
-    echo [OK] 已备份到 %BACKUP_DIR%\ro-ro-monitor_!TIMESTAMP!.jar
+    echo [OK] Backed up to %BACKUP_DIR%\ro-ro-monitor_!TIMESTAMP!.jar
 ) else (
-    echo [WARN] 备份失败，继续执行
+    echo [WARN] Backup failed, continuing anyway
 )
 
 echo.
-echo [STEP 2/7] 停止后端服务...
+echo [STEP 2/7] Stopping backend service...
 nssm stop roro-backend
 if !errorlevel! neq 0 (
-    echo [WARN] nssm stop 失败，尝试 taskkill...
+    echo [WARN] nssm stop failed, trying taskkill...
     taskkill /f /im java.exe 2>nul
 )
 echo [OK]
 
 echo.
-echo [STEP 3/7] 停止 Nginx...
+echo [STEP 3/7] Stopping Nginx...
 taskkill /f /im nginx.exe 2>nul
 echo [OK]
 
 echo.
-echo [STEP 4/7] 替换后端 JAR...
+echo [STEP 4/7] Replacing backend JAR...
 copy /Y "%~dp0backend\ro-ro-monitor.jar" "%BACKEND_DIR%\ro-ro-monitor.jar"
 if !errorlevel! neq 0 (
-    echo [ERROR] 后端 JAR 替换失败！
+    echo [ERROR] Backend JAR replacement failed!
     pause
     exit /b 1
 )
 echo [OK]
 
 echo.
-echo [STEP 5/7] 替换前端文件...
+echo [STEP 5/7] Replacing frontend files...
 xcopy /E /Y "%~dp0frontend\*.*" "%FRONTEND_DIR%\"
 echo [OK]
 
 echo.
-echo [STEP 6/7] 启动后端服务...
+echo [STEP 6/7] Starting backend service...
 nssm start roro-backend
 if !errorlevel! neq 0 (
-    echo [ERROR] 服务启动失败！
+    echo [ERROR] Service start failed!
     pause
     exit /b 1
 )
 echo [OK]
 
 echo.
-echo [STEP 7/7] 健康检查 + 启动 Nginx...
+echo [STEP 7/7] Health check + starting Nginx...
 call :wait_for_health
 
 taskkill /f /im nginx.exe 2>nul
 start "" "%RORO_HOME%\nginx\nginx.exe"
-echo [OK] Nginx 已启动
+echo [OK] Nginx started
 
 echo.
 echo =============================================
-echo  迭代更新完成！
+echo   Iterative update complete!
 echo =============================================
 goto :end
 
 REM ===========================================================================
-REM 启动服务（首次部署使用）
+REM Start services (first deploy)
 REM ===========================================================================
 :start_services
-echo 启动后端服务...
+echo Starting backend service...
 nssm start roro-backend
 if !errorlevel! neq 0 (
-    echo [WARN] nssm start 失败，请检查服务状态
+    echo [WARN] nssm start failed, check service status
 )
 call :wait_for_health
 
-echo 启动 Nginx...
+echo Starting Nginx...
 if exist "%RORO_HOME%\nginx\nginx.exe" (
     taskkill /f /im nginx.exe 2>nul
     start "" "%RORO_HOME%\nginx\nginx.exe"
     echo [OK]
 ) else (
-    echo [WARN] Nginx 未安装或路径不正确
+    echo [WARN] Nginx not installed or path incorrect
 )
 goto :eof
 
 REM ===========================================================================
-REM 健康检查轮询
+REM Health check polling
 REM ===========================================================================
 :wait_for_health
-echo 等待后端就绪（最多 120 秒）...
+echo Waiting for backend to become ready (max 120s)...
 set HEALTH_URL=http://localhost:8080/actuator/health
 set MAX_RETRIES=24
 set RETRY_COUNT=0
@@ -242,21 +238,20 @@ set RETRY_COUNT=0
 timeout /t 5 /nobreak >nul
 set /a RETRY_COUNT+=1
 
-REM 使用 PowerShell 进行 HTTP 请求
 powershell -Command "try { $r = Invoke-WebRequest -Uri '%HEALTH_URL%' -UseBasicParsing -TimeoutSec 3; if ($r.StatusCode -eq 200) { exit 0 } else { exit 1 } } catch { exit 1 }" >nul 2>&1
 
 if !errorlevel! equ 0 (
-    echo [OK] 后端已就绪
+    echo [OK] Backend is ready
     goto :eof
 )
 
 if !RETRY_COUNT! geq !MAX_RETRIES! (
-    echo [ERROR] 健康检查超时！请手动检查后端状态
-    echo  curl %HEALTH_URL%
+    echo [ERROR] Health check timeout! Check backend manually:
+    echo   curl %HEALTH_URL%
     goto :eof
 )
 
-echo 等待中（第 !RETRY_COUNT! 次 / !MAX_RETRIES! 次）
+echo Waiting (attempt !RETRY_COUNT!/!MAX_RETRIES!)
 goto :health_loop
 
 :end
