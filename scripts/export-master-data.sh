@@ -76,7 +76,7 @@ BUSINESS_TABLES=(
     "monitor_snapshot"
 )
 
-MYSQLDUMP_ARGS="--no-create-info --complete-insert --default-character-set=utf8mb4 --single-transaction --skip-triggers --skip-add-locks --skip-comments --skip-tz-utc"
+MYSQLDUMP_ARGS="--no-create-info --replace --complete-insert --default-character-set=utf8mb4 --single-transaction --skip-triggers --skip-add-locks --skip-comments --skip-tz-utc"
 
 # —— Export ——
 info "开始导出基础数据到: $OUTPUT_FILE"
