@@ -71,6 +71,15 @@ for %%f in ("%SQL_DIR%\*.sql") do (
     )
 )
 echo [OK] All SQL files executed
+
+echo.
+echo [STEP 2.5] Creating application user roro_app...
+"%MYSQL_EXE%" -u root -p%DB_PASSWORD% -P %DB_PORT% -h %DB_HOST% -e "CREATE USER IF NOT EXISTS 'roro_app'@'localhost' IDENTIFIED BY '%DB_PASSWORD%'; GRANT SELECT, INSERT, UPDATE, DELETE ON %DB_NAME%.* TO 'roro_app'@'localhost'; FLUSH PRIVILEGES;"
+if !errorlevel! neq 0 (
+    echo [WARN] Failed to create roro_app user, continuing...
+) else (
+    echo [OK] roro_app user created
+)
 echo [STEP 3/7] Importing base data...
 if exist "%DATA_DIR%\master-data.sql" (
     "%MYSQL_EXE%" -u root -p%DB_PASSWORD% -P %DB_PORT% -h %DB_HOST% %DB_NAME% < "%DATA_DIR%\master-data.sql"
