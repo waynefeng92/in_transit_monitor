@@ -504,7 +504,7 @@ net start | findstr MySQL
 
 | 原因 | 解决方法 |
 |------|----------|
-| root 路径不对 | 检查 nginx.conf 中 `root` 指向 `D:/in_transit_monitor/frontend/dist` |
+| root 路径不对 | 检查 nginx.conf 中 `root` 指向 `D:/in_transit_monitor/frontend` |
 | 前端文件未部署 | 检查 `D:\in_transit_monitor\frontend\` 下是否有文件 |
 | SPA 路由未配置 | 确认 nginx.conf 中有 `try_files $uri $uri/ /index.html` |
 | Nginx 配置未加载 | `.\nginx -t` 检查语法 → `.\nginx -s reload` 重新加载 |
