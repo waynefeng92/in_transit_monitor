@@ -208,14 +208,10 @@ echo =============================================
 goto :end
 
 REM ===========================================================================
-REM Start services (first deploy)
+REM Start services (first deploy) — service already started by register-service.bat
 REM ===========================================================================
 :start_services
-echo Starting backend service...
-nssm start roro-backend
-if !errorlevel! neq 0 (
-    echo [WARN] nssm start failed, check service status
-)
+echo Backend service already started — waiting for readiness...
 call :wait_for_health
 
 echo Starting Nginx...
