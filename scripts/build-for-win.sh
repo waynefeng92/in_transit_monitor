@@ -96,7 +96,7 @@ if command -v mysqldump >/dev/null 2>&1; then
     if [ -n "${DB_PASS:-}" ]; then
         mysql_args="$mysql_args -p$DB_PASS"
     fi
-    if mysqldump --no-data --default-character-set=utf8mb4 --single-transaction         $mysql_args "$DB_NAME" > "$BUILD_DIR/sql/ro_ro_monitor_schema.sql" 2>/dev/null; then
+    if mysqldump --no-data --default-character-set=utf8mb4 --single-transaction         $mysql_args "${DB_NAME:-ro_ro_monitor}" > "$BUILD_DIR/sql/ro_ro_monitor_schema.sql" 2>/dev/null; then
         info "schema DDL exported"
     else
         warn "schema export failed, falling back to static SQL files"
