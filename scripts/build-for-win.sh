@@ -105,6 +105,11 @@ if command -v mysqldump >/dev/null 2>&1; then
     fi
     if mysqldump --no-data --databases ro_ro_monitor --default-character-set=utf8mb4 --single-transaction         $mysql_args > "$BUILD_DIR/sql/ro_ro_monitor_schema.sql" 2>/dev/null; then
         info "schema DDL exported"
+
+# Also include app user creation SQL (MySQL user, not table data)
+if [ -f "$BACKEND_DIR/src/main/resources/sql/5_create-app-user.sql" ]; then
+    cp "$BACKEND_DIR/src/main/resources/sql/5_create-app-user.sql" "$BUILD_DIR/sql/"
+fi
     else
         warn "schema export failed, falling back to static SQL files"
         SQL_DIR="$BACKEND_DIR/src/main/resources/sql"
