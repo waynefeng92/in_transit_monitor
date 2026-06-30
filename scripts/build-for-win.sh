@@ -83,9 +83,16 @@ if [ -f "scripts/master-data.sql" ]; then
     rm -f "scripts/master-data.sql"  # clean up
 fi
 
-# Copy all SQL migration files
-SQL_DIR="$BACKEND_DIR/src/main/resources/sql"
-if [ -d "$SQL_DIR" ]; then
+# Export fresh schema from local dev MySQL (one file, all tables)
+info "导出完整建表 DDL（从本地 MySQL）..."
+if command -v mysqldump >/dev/null 2>&1; then
+    mysqldump --no-data --default-character-set=utf8mb4 --single-transaction         -h "$DB_HOST" -u "$DB_USER" -p"$DB_PASS" -P "$DB_PORT"         "$DB_NAME" > "$BUILD_DIR/sql/ro_ro_monitor_schema.sql" 2>/dev/null || {
+        warn "mysqldump schema failed, falling back to static SQL files"
+        SQL_DIR="$BACKEND_DIR/src/main/resources/sql"
+        cp "$SQL_DIR"/*.sql "$BUILD_DIR/sql/" 2>/dev/null || true
+    }
+else
+    SQL_DIR="$BACKEND_DIR/src/main/resources/sql"
     cp "$SQL_DIR"/*.sql "$BUILD_DIR/sql/" 2>/dev/null || true
 fi
 

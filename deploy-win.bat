@@ -59,9 +59,8 @@ if not exist "%RORO_HOME%\logs" mkdir "%RORO_HOME%\logs"
 echo [OK]
 
 echo.
-echo.
-echo [STEP 2/7] Initializing database (running all SQL files)...
-echo WARNING: 0_ro_ro_monitor_full.sql contains DROP DATABASE IF EXISTS!
+echo [STEP 2/7] Creating database schema...
+echo Running schema SQL files...
 for %%f in ("%SQL_DIR%\*.sql") do (
     echo   Running: %%~nxf
     "%MYSQL_EXE%" -u root -p%DB_PASSWORD% -P %DB_PORT% -h %DB_HOST% < "%%f"
