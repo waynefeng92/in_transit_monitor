@@ -8,6 +8,13 @@
 
 set -euo pipefail
 
+# -- MySQL connection defaults (override via args: -h -u -p -P) --
+DB_HOST="${DB_HOST:-localhost}"
+DB_USER="${DB_USER:-root}"
+DB_PASS="${DB_PASS:-}"
+DB_PORT="${DB_PORT:-3306}"
+DB_NAME="${DB_NAME:-ro_ro_monitor}"
+
 # -- Configurable paths --
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BACKEND_DIR="$PROJECT_ROOT/ro-ro-monitor"
