@@ -58,7 +58,7 @@ info "前端构建完成"
 info "导出基础数据..."
 cd "$PROJECT_ROOT"
 if [ -f "scripts/export-master-data.sh" ]; then
-    bash scripts/export-master-data.sh -o scripts/master-data.sql || warn "基础数据导出失败，可后续手动导出"
+    bash scripts/export-master-data.sh -h "${DB_HOST:-localhost}" -u "${DB_USER:-root}" -p "$DB_PASS" -P "${DB_PORT:-3306}" -o scripts/master-data.sql || warn "基础数据导出失败，可后续手动导出"
 else
     warn "export-master-data.sh 不存在，跳过数据导出"
 fi
@@ -84,13 +84,20 @@ if [ -f "scripts/master-data.sql" ]; then
 fi
 
 # Export fresh schema from local dev MySQL (one file, all tables)
+# Reuse credentials from earlier export (prompt once if needed)
 info "导出完整建表 DDL（从本地 MySQL）..."
 if command -v mysqldump >/dev/null 2>&1; then
-    mysqldump --no-data --default-character-set=utf8mb4 --single-transaction         -h "$DB_HOST" -u "$DB_USER" -p"$DB_PASS" -P "$DB_PORT"         "$DB_NAME" > "$BUILD_DIR/sql/ro_ro_monitor_schema.sql" 2>/dev/null || {
-        warn "mysqldump schema failed, falling back to static SQL files"
+    mysql_args="-h ${DB_HOST:-localhost} -P ${DB_PORT:-3306} -u ${DB_USER:-root}"
+    if [ -n "${DB_PASS:-}" ]; then
+        mysql_args="$mysql_args -p$DB_PASS"
+    fi
+    if mysqldump --no-data --default-character-set=utf8mb4 --single-transaction         $mysql_args "$DB_NAME" > "$BUILD_DIR/sql/ro_ro_monitor_schema.sql" 2>/dev/null; then
+        info "schema DDL exported"
+    else
+        warn "schema export failed, falling back to static SQL files"
         SQL_DIR="$BACKEND_DIR/src/main/resources/sql"
         cp "$SQL_DIR"/*.sql "$BUILD_DIR/sql/" 2>/dev/null || true
-    }
+    fi
 else
     SQL_DIR="$BACKEND_DIR/src/main/resources/sql"
     cp "$SQL_DIR"/*.sql "$BUILD_DIR/sql/" 2>/dev/null || true
