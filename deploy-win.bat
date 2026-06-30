@@ -24,10 +24,8 @@ if exist "%RORO_HOME%\env.bat" (
     echo [WARN] env.bat not found, using defaults
 )
 
-REM -- MySQL connection args --
-set MYSQL_CMD=mysql -u root -p%DB_PASSWORD% -P %DB_PORT% -h %DB_HOST%
-set MYSQL_IMPORT=mysql -u root -p%DB_PASSWORD% -P %DB_PORT% -h %DB_HOST% %DB_NAME%
-
+REM -- MySQL executable (full path; adjust if installed elsewhere) --
+set "MYSQL_EXE=C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe"
 echo =============================================
 echo   Ro-Ro Vehicle Monitor - Deployment Script
 echo =============================================
@@ -35,7 +33,7 @@ echo Deploy path: %RORO_HOME%
 
 REM -- First deploy or iterative update? --
 REM Check if database exists (more reliable than file check)
-%MYSQL_CMD% -e "USE %DB_NAME%" 2>nul
+"%MYSQL_EXE%" -u root -p%DB_PASSWORD% -P %DB_PORT% -h %DB_HOST% -e "USE %DB_NAME%" 2>nul
 if errorlevel 1 (
     echo =============================================
     echo   FIRST DEPLOY MODE (database not found)
@@ -64,7 +62,7 @@ echo.
 echo [STEP 2/7] Initializing database (DDL - run as MySQL root)...
 echo WARNING: This will run 0_ro_ro_monitor_full.sql (DROP DATABASE IF EXISTS) - first run only!
 if exist "%SQL_DIR%\0_ro_ro_monitor_full.sql" (
-    %MYSQL_CMD% < "%SQL_DIR%\0_ro_ro_monitor_full.sql"
+    "%MYSQL_EXE%" -u root -p%DB_PASSWORD% -P %DB_PORT% -h %DB_HOST% < "%SQL_DIR%\0_ro_ro_monitor_full.sql"
     if !errorlevel! neq 0 (
         echo [ERROR] DDL execution failed! Check MySQL connection and password.
         pause
@@ -78,7 +76,7 @@ if exist "%SQL_DIR%\0_ro_ro_monitor_full.sql" (
 echo.
 echo [STEP 3/7] Importing base data...
 if exist "%DATA_DIR%\master-data.sql" (
-    %MYSQL_IMPORT% < "%DATA_DIR%\master-data.sql"
+    "%MYSQL_EXE%" -u root -p%DB_PASSWORD% -P %DB_PORT% -h %DB_HOST% %DB_NAME% < "%DATA_DIR%\master-data.sql"
     if !errorlevel! neq 0 (
         echo [ERROR] Base data import failed!
         pause
