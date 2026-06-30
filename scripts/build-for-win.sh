@@ -124,6 +124,7 @@ fi
 mkdir -p "$BUILD_DIR/scripts"
 cp "$PROJECT_ROOT/deploy-win.bat" "$BUILD_DIR/"
 cp "$PROJECT_ROOT/scripts/register-service.bat" "$BUILD_DIR/scripts/"
+cp "$PROJECT_ROOT/ro-ro-monitor-web/nginx-windows.conf" "$BUILD_DIR/"
 
 # Generate env.bat template with CRLF line endings (cmd.exe requirement)
 python3 -c "
