@@ -54,11 +54,16 @@ cd "$FRONTEND_DIR"
 npm run build
 info "前端构建完成"
 
+# Prompt for MySQL password once, reuse for both data and schema exports
+if [ -z "${DB_PASS:-}" ]; then
+    read -s -p "MySQL password: " DB_PASS
+    echo ""
+fi
 # -- Step 3: Export master data --
 info "导出基础数据..."
 cd "$PROJECT_ROOT"
 if [ -f "scripts/export-master-data.sh" ]; then
-    bash scripts/export-master-data.sh -h "${DB_HOST:-localhost}" -u "${DB_USER:-root}" -p "$DB_PASS" -P "${DB_PORT:-3306}" -o scripts/master-data.sql || warn "基础数据导出失败，可后续手动导出"
+    bash scripts/export-master-data.sh -h "${DB_HOST:-localhost}" -u "${DB_USER:-root}" -p "${DB_PASS}" -P "${DB_PORT:-3306}" -o scripts/master-data.sql || warn "基础数据导出失败，可后续手动导出"
 else
     warn "export-master-data.sh 不存在，跳过数据导出"
 fi
