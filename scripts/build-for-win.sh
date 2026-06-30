@@ -83,10 +83,10 @@ if [ -f "scripts/master-data.sql" ]; then
     rm -f "scripts/master-data.sql"  # clean up
 fi
 
-# Copy init SQL
-SQL_SRC="$BACKEND_DIR/src/main/resources/sql/0_ro_ro_monitor_full.sql"
-if [ -f "$SQL_SRC" ]; then
-    cp "$SQL_SRC" "$BUILD_DIR/sql/"
+# Copy all SQL migration files
+SQL_DIR="$BACKEND_DIR/src/main/resources/sql"
+if [ -d "$SQL_DIR" ]; then
+    cp "$SQL_DIR"/*.sql "$BUILD_DIR/sql/" 2>/dev/null || true
 fi
 
 # Copy deployment scripts (deploy-win.bat + register-service.bat)

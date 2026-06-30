@@ -59,21 +59,19 @@ if not exist "%RORO_HOME%\logs" mkdir "%RORO_HOME%\logs"
 echo [OK]
 
 echo.
-echo [STEP 2/7] Initializing database (DDL - run as MySQL root)...
-echo WARNING: This will run 0_ro_ro_monitor_full.sql (DROP DATABASE IF EXISTS) - first run only!
-if exist "%SQL_DIR%\0_ro_ro_monitor_full.sql" (
-    "%MYSQL_EXE%" -u root -p%DB_PASSWORD% -P %DB_PORT% -h %DB_HOST% < "%SQL_DIR%\0_ro_ro_monitor_full.sql"
+echo.
+echo [STEP 2/7] Initializing database (running all SQL files)...
+echo WARNING: 0_ro_ro_monitor_full.sql contains DROP DATABASE IF EXISTS!
+for %%f in ("%SQL_DIR%\*.sql") do (
+    echo   Running: %%~nxf
+    "%MYSQL_EXE%" -u root -p%DB_PASSWORD% -P %DB_PORT% -h %DB_HOST% < "%%f"
     if !errorlevel! neq 0 (
-        echo [ERROR] DDL execution failed! Check MySQL connection and password.
+        echo [ERROR] Failed: %%~nxf
         pause
         exit /b 1
     )
-    echo [OK] Database schema created
-) else (
-    echo [WARN] 0_ro_ro_monitor_full.sql not found, skipping schema creation
 )
-
-echo.
+echo [OK] All SQL files executed
 echo [STEP 3/7] Importing base data...
 if exist "%DATA_DIR%\master-data.sql" (
     "%MYSQL_EXE%" -u root -p%DB_PASSWORD% -P %DB_PORT% -h %DB_HOST% %DB_NAME% < "%DATA_DIR%\master-data.sql"
