@@ -95,8 +95,10 @@
 1. 下载 Nginx for Windows：https://nginx.org/en/download.html
    - 选择 `nginx/Windows-*` 稳定版（zip 包）
 2. 解压到 `D:\in_transit_monitor\nginx\`
-3. 将项目仓库中的 `ro-ro-monitor-web/nginx-windows.conf` 复制到 `D:\in_transit_monitor\nginx\conf\` 并**重命名为 `nginx.conf`**（nginx 默认读这个文件名），或直接在该路径下手动创建 `nginx.conf`
-4. 验证配置：
+3. 解压 zip 后 `nginx-windows.conf` 已在 `D:\in_transit_monitor\` 下，复制并重命名为 nginx 默认配置：
+   ```cmd
+   copy D:\in_transit_monitor\nginx-windows.conf D:\in_transit_monitor\nginx\conf\nginx.conf
+   ```
    ```cmd
    cd D:\in_transit_monitor\nginx
    .\nginx -t
