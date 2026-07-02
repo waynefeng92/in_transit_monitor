@@ -158,6 +158,10 @@ with open('$BUILD_DIR/env.bat', 'wb') as f:
     f.write('\r\n'.join(lines).encode('ascii') + b'\r\n')
 "
 
+# Convert all .bat files to CRLF (Windows cmd.exe requirement)
+find "$BUILD_DIR" -name "*.bat" | while read f; do
+    python3 -c "import pathlib; p=pathlib.Path('$f'); c=p.read_bytes(); p.write_bytes(c.replace(b'\n', b'\r\n')) if b'\r\n' not in c else None" 2>/dev/null || true
+done
 
 # -- Step 5: Package zip --
 info "打包 roro-windows-deploy.zip..."
