@@ -110,40 +110,78 @@
         </div>
       </template>
 
-      <div style="margin-top: 20px;">
-        <el-table :data="tableData" border stripe size="small" max-height="420">
-          <el-table-column prop="brand" label="品牌" min-width="120" />
-          <el-table-column prop="normal" label="正常" width="120" align="center">
-            <template #default="{ row }">
-              <el-tag type="success" effect="dark">{{ row.normal }}</el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column prop="warn" label="预警" width="120" align="center">
-            <template #default="{ row }">
-              <el-tag type="warning" effect="dark">{{ row.warn }}</el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column prop="overdue" label="超期" width="120" align="center">
-            <template #default="{ row }">
-              <el-tag type="danger" effect="dark">{{ row.overdue }}</el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column label="合计" width="120" align="center">
-            <template #default="{ row }">
-              {{ (row.normal || 0) + (row.warn || 0) + (row.overdue || 0) }}
-            </template>
-          </el-table-column>
-        </el-table>
+    </section>
+
+    <section class="dashboard-panel dashboard-panel-detail">
+      <div class="panel-header">
+        <div>
+          <div class="panel-title">详细数据</div>
+          <div class="panel-subtitle">展示各品牌在整段监控下的正常、预警、超期明细</div>
+        </div>
+        <el-button text class="detail-toggle" @click="showDetail = !showDetail">
+          {{ showDetail ? '收起明细' : '展开明细' }}
+        </el-button>
       </div>
+      <el-collapse-transition>
+        <div v-show="showDetail" class="detail-table-wrap">
+          <el-table :data="tableData" border stripe size="small" max-height="420">
+            <el-table-column prop="brand" label="品牌" min-width="120" fixed />
+            <el-table-column prop="transportStatus" label="在途状态" min-width="150">
+              <template #default="{ row }">{{ row.transportStatus || '整段监控' }}</template>
+            </el-table-column>
+            <el-table-column prop="normal" label="正常" width="100" align="center">
+              <template #default="{ row }">
+                <el-tag type="success" effect="dark"
+                  :class="{ 'clickable-tag': true }"
+                  @click.stop="handleCellClick(row, 'normal')">{{ row.normal }}</el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column prop="warn" label="预警" width="100" align="center">
+              <template #default="{ row }">
+                <el-tag type="warning" effect="dark"
+                  :class="{ 'clickable-tag': true }"
+                  @click.stop="handleCellClick(row, 'warn')">{{ row.warn }}</el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column prop="overdue" label="超期" width="100" align="center">
+              <template #default="{ row }">
+                <el-tag type="danger" effect="dark"
+                  :class="{ 'clickable-tag': true }"
+                  @click.stop="handleCellClick(row, 'overdue')">{{ row.overdue }}</el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="合计" width="100" align="center">
+              <template #default="{ row }">
+                {{ (row.normal || 0) + (row.warn || 0) + (row.overdue || 0) }}
+              </template>
+            </el-table-column>
+          </el-table>
+          <div v-show="activeDrillCell" class="drilldown-area">
+            <el-skeleton v-if="drilldownLoading" animated :rows="3" />
+            <template v-else>
+              <VehicleDrilldownTable
+                v-if="drilldownVehicleList.length"
+                :vehicleList="drilldownVehicleList"
+                :total="drilldownTotal"
+                @close="handleCloseDrilldown"
+                @page-change="handleDrilldownPageChange"
+              />
+              <el-empty v-else description="暂无匹配车辆" />
+            </template>
+          </div>
+        </div>
+      </el-collapse-transition>
     </section>
   </div>
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { Refresh } from '@element-plus/icons-vue'
 import StackedBarChart from '@/components/StackedBarChart.vue'
 import StatusPieChart from '@/components/StatusPieChart.vue'
+import { getVehicleDetails } from '@/api/chart'
+import VehicleDrilldownTable from '@/components/dashboard/VehicleDrilldownTable.vue'
 
 const props = defineProps({
   chartData: { type: Array, default: () => [] },
@@ -156,8 +194,85 @@ const props = defineProps({
 
 defineEmits(['update:selectedBrand', 'update:selectedAlertStatus', 'resetFilters', 'refresh'])
 
+const showDetail = ref(true)
+const drilldownVehicleList = ref([])
+const drilldownLoading = ref(false)
+const activeDrillCell = ref(null)
+const currentDrillRequestKey = ref(null)
+const drilldownTotal = ref(0)
+const drilldownPageSize = ref(20)
+const drilldownCurrentParams = ref(null)
+
 const monitorStatusOptions = ['正常', '预警', '超期']
 const statusFieldMap = { 正常: 'normal', 预警: 'warn', 超期: 'overdue' }
+const drilldownStatusFieldMap = { normal: 'NORMAL', warn: 'WARN', overdue: 'OVERDUE' }
+
+const handleCellClick = async (row, columnKey) => {
+  const cellKey = `${row.brand}_${columnKey}`
+  if (activeDrillCell.value === cellKey) {
+    drilldownVehicleList.value = []
+    activeDrillCell.value = null
+    return
+  }
+  activeDrillCell.value = cellKey
+  currentDrillRequestKey.value = cellKey
+  drilldownLoading.value = true
+  drilldownVehicleList.value = []
+  try {
+    const params = {
+      type: 'overall',
+      brandName: row.brand,
+      monitorStatus: drilldownStatusFieldMap[columnKey]
+    }
+    drilldownCurrentParams.value = { ...params }
+    const paginatedParams = { ...params, page: 1, size: drilldownPageSize.value }
+    const data = await getVehicleDetails(paginatedParams)
+    if (currentDrillRequestKey.value === cellKey) {
+      drilldownVehicleList.value = Array.isArray(data?.records) ? data.records : []
+      drilldownTotal.value = data?.total || 0
+    }
+  } catch (e) {
+    console.error('获取车辆明细失败', e)
+    if (currentDrillRequestKey.value === cellKey) {
+      drilldownVehicleList.value = []
+    }
+  } finally {
+    if (currentDrillRequestKey.value === cellKey) {
+      drilldownLoading.value = false
+    }
+  }
+}
+
+const handleCloseDrilldown = () => {
+  drilldownVehicleList.value = []
+  activeDrillCell.value = null
+  currentDrillRequestKey.value = null
+  drilldownTotal.value = 0
+}
+
+const handleDrilldownPageChange = async (newPage, newSize) => {
+  drilldownLoading.value = true
+  if (newSize) drilldownPageSize.value = newSize
+  const cellKey = activeDrillCell.value
+  currentDrillRequestKey.value = cellKey
+  try {
+    const paginatedParams = { ...drilldownCurrentParams.value, page: newPage, size: newSize || drilldownPageSize.value }
+    const data = await getVehicleDetails(paginatedParams)
+    if (currentDrillRequestKey.value === cellKey) {
+      drilldownVehicleList.value = Array.isArray(data?.records) ? data.records : []
+      drilldownTotal.value = data?.total || 0
+    }
+  } catch (e) {
+    console.error('获取车辆明细失败', e)
+    if (currentDrillRequestKey.value === cellKey) {
+      drilldownVehicleList.value = []
+    }
+  } finally {
+    if (currentDrillRequestKey.value === cellKey) {
+      drilldownLoading.value = false
+    }
+  }
+}
 
 const brandOptions = computed(() => {
   return Array.from(new Set(props.chartData.map(item => item.brand).filter(Boolean))).sort((a, b) =>
@@ -223,5 +338,15 @@ const pieSectionSubtitle = computed(() => {
   display: flex;
   flex-direction: column;
   gap: 20px;
+}
+.clickable-tag {
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+.clickable-tag:hover {
+  opacity: 0.7;
+}
+.drilldown-area {
+  margin-top: 12px;
 }
 </style>
