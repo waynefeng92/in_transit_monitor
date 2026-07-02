@@ -22,5 +22,6 @@ mvnw.cmd
 *.orig
 
 # Config (包含敏感信息)
+application-dev.yml
 application-local.yml
 application-prod.yml

@@ -106,7 +106,7 @@ const router = createRouter({
 
 router.beforeEach(async (to, from) => {
   // Set page title
-  document.title = to.meta.title ? `${to.meta.title} - 在途车辆监控系统` : '在途车辆监控系统'
+  document.title = '在途车辆监控系统'
 
   // Auth check
   const authStore = useAuthStore()
