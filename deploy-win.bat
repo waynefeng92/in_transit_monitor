@@ -135,15 +135,25 @@ REM ITERATIVE UPDATE
 REM ===========================================================================
 :iterative_update
 echo.
-echo [STEP 1/7] Backing up current JAR...
-
-REM Generate timestamp (YYYYMMDD_HHMMSS)
+echo [STEP 0/8] Backing up database...
+REM Generate timestamp
 for /f "tokens=2 delims==" %%I in ('wmic os get localdatetime /value 2^>nul') do set DATETIME=%%I
 if "%DATETIME%"=="" (
     set DATETIME=%DATE:~0,4%%DATE:~5,2%%DATE:~8,2%_%TIME:~0,2%%TIME:~3,2%%TIME:~6,2%
     set DATETIME=!DATETIME: =0!
 )
 set TIMESTAMP=!DATETIME:~0,8!_!DATETIME:~8,6!
+
+if not exist "%BACKUP_DIR%" mkdir "%BACKUP_DIR%"
+"%MYSQL_EXE%" -u root -p%DB_PASSWORD% -P %DB_PORT% -h %DB_HOST% --single-transaction --routines --triggers %DB_NAME% > "%BACKUP_DIR%\ro_ro_monitor_!TIMESTAMP!.sql" 2>nul
+if !errorlevel! equ 0 (
+    echo [OK] Database backed up to %BACKUP_DIR%\ro_ro_monitor_!TIMESTAMP!.sql
+) else (
+    echo [WARN] Database backup failed, continuing anyway
+)
+
+echo.
+echo [STEP 1/8] Backing up current JAR...
 
 if not exist "%BACKUP_DIR%" mkdir "%BACKUP_DIR%"
 copy "%BACKEND_DIR%\ro-ro-monitor.jar" "%BACKUP_DIR%\ro-ro-monitor_!TIMESTAMP!.jar"
@@ -154,7 +164,7 @@ if !errorlevel! equ 0 (
 )
 
 echo.
-echo [STEP 2/7] Stopping backend service...
+echo [STEP 2/8] Stopping backend service...
 nssm stop roro-backend
 if !errorlevel! neq 0 (
     echo [WARN] nssm stop failed, trying taskkill...
@@ -163,12 +173,12 @@ if !errorlevel! neq 0 (
 echo [OK]
 
 echo.
-echo [STEP 3/7] Stopping Nginx...
+echo [STEP 3/8] Stopping Nginx...
 taskkill /f /im nginx.exe 2>nul
 echo [OK]
 
 echo.
-echo [STEP 4/7] Replacing backend JAR...
+echo [STEP 4/8] Replacing backend JAR...
 copy /Y "%~dp0backend\ro-ro-monitor.jar" "%BACKEND_DIR%\ro-ro-monitor.jar"
 if !errorlevel! neq 0 (
     echo [ERROR] Backend JAR replacement failed!
@@ -178,12 +188,12 @@ if !errorlevel! neq 0 (
 echo [OK]
 
 echo.
-echo [STEP 5/7] Replacing frontend files...
+echo [STEP 5/8] Replacing frontend files...
 xcopy /E /Y "%~dp0frontend\*.*" "%FRONTEND_DIR%\"
 echo [OK]
 
 echo.
-echo [STEP 6/7] Starting backend service...
+echo [STEP 6/8] Starting backend service...
 nssm start roro-backend
 if !errorlevel! neq 0 (
     echo [ERROR] Service start failed!
@@ -193,7 +203,7 @@ if !errorlevel! neq 0 (
 echo [OK]
 
 echo.
-echo [STEP 7/7] Health check + starting Nginx...
+echo [STEP 7/8] Health check + starting Nginx...
 call :wait_for_health
 
 taskkill /f /im nginx.exe 2>nul
