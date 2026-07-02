@@ -249,7 +249,7 @@ const updateChart = () => {
           const startCoord = api.coord([startTs, categoryIndex])
           const endCoord = api.coord([endTs, categoryIndex])
 
-          const barHeight = api.size([0, 1])[1] * 0.55
+          const barHeight = api.size([0, 1])[1] * 0.9
           const y = startCoord[1] - barHeight / 2
           const width = Math.max(endCoord[0] - startCoord[0], 2)
 
