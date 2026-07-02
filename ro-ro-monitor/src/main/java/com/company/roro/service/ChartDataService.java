@@ -20,6 +20,8 @@ import java.util.stream.Collectors;
 @Service
 public class ChartDataService {
 
+    private static final Set<String> SECTION_NAMES = Set.of("前段", "中段", "后段");
+
     @Autowired
     private VehicleTransitService vehicleTransitService;
 
@@ -31,6 +33,19 @@ public class ChartDataService {
 
     @Autowired
     private TransportStatusDictService transportStatusDictService;
+
+    /**
+     * 获取三段监控中某段对应的运输状态码集合
+     */
+    private Set<String> getTransportStatusesForSection(String sectionName) {
+        if (sectionName == null) return null;
+        switch (sectionName) {
+            case "前段": return Set.of("NOT_DEPARTED", "TO_PORT", "AT_PORT_WAIT_SHIP");
+            case "中段": return Set.of("ON_SEA", "AT_DEST_WAIT_UNLOAD");
+            case "后段": return Set.of("UNLOADED_WAIT_DISPATCH", "DISPATCHING");
+            default: return null;
+        }
+    }
 
     /**
      * 获取品牌-状态分组统计数据
@@ -294,6 +309,181 @@ public class ChartDataService {
 
         chartData.sort(Comparator.comparing(SectionBrandChartDataDTO::getBrand));
         return chartData;
+    }
+
+    /**
+     * 获取车辆详情列表（品牌/状态/监控状态钻取）
+     *
+     * <p>从 getBrandStatusChart 的同源数据中过滤出匹配的车辆明细，
+     * 用于监控大屏图表点击钻取时展示车辆列表。</p>
+     *
+     * @param startTime           订单释放时间范围-起始（可选）
+     * @param endTime             订单释放时间范围-结束（可选）
+     * @param type                图表类型：segment / overall / three-section
+     * @param brandName           品牌名称（可选）
+     * @param transportStatusName 在途状态中文名（可选）
+     * @param monitorStatus       监控状态：NORMAL / WARN / OVERDUE（可选）
+     * @return 匹配的车辆列表，按品牌名称和VIN排序
+     */
+    @Transactional(readOnly = true)
+    public Map<String, Object> getVehicleDetails(
+            LocalDateTime startTime, LocalDateTime endTime,
+            String type, String brandName, String transportStatusName,
+            String monitorStatus, Integer page, Integer size) {
+        int pageNum = page != null ? page : 1;
+        int pageSize = size != null ? size : 20;
+        // 1. 查询所有未到达的在途车辆（与 getBrandStatusChart 相同的基查询）
+        LambdaQueryWrapper<VehicleTransit> transitQuery = new LambdaQueryWrapper<VehicleTransit>()
+                .ne(VehicleTransit::getTransportStatus, "ARRIVED");
+
+        if (startTime != null || endTime != null) {
+            LambdaQueryWrapper<OrderInfo> orderQuery = new LambdaQueryWrapper<>();
+            if (startTime != null) {
+                orderQuery.ge(OrderInfo::getOrderReleaseTime, startTime);
+            }
+            if (endTime != null) {
+                orderQuery.le(OrderInfo::getOrderReleaseTime, endTime);
+            }
+            List<Integer> timeFilteredOrderIds = orderInfoService.list(orderQuery).stream()
+                    .map(OrderInfo::getId)
+                    .collect(Collectors.toList());
+            if (timeFilteredOrderIds.isEmpty()) {
+                Map<String, Object> emptyResult = new LinkedHashMap<>();
+                emptyResult.put("records", Collections.emptyList());
+                emptyResult.put("total", 0);
+                emptyResult.put("page", pageNum);
+                emptyResult.put("size", pageSize);
+                return emptyResult;
+            }
+            transitQuery.in(VehicleTransit::getOrderId, timeFilteredOrderIds);
+        }
+
+        List<VehicleTransit> transitList = vehicleTransitService.list(transitQuery);
+
+        if (transitList.isEmpty()) {
+            Map<String, Object> emptyResult = new LinkedHashMap<>();
+            emptyResult.put("records", Collections.emptyList());
+            emptyResult.put("total", 0);
+            emptyResult.put("page", pageNum);
+            emptyResult.put("size", pageSize);
+            return emptyResult;
+        }
+
+        // 2. 获取状态码 → 中文名的映射
+        Map<String, String> statusNameMap = transportStatusDictService.list().stream()
+                .collect(Collectors.toMap(
+                        TransportStatusDict::getStatusCode,
+                        TransportStatusDict::getStatusName,
+                        (a, b) -> a
+                ));
+
+        // 3. 获取所有关联的订单ID
+        List<Integer> orderIds = transitList.stream()
+                .map(VehicleTransit::getOrderId)
+                .distinct()
+                .collect(Collectors.toList());
+
+        // 4. 批量查询订单信息
+        Map<Integer, OrderInfo> orderMap = orderInfoService.listByIds(orderIds).stream()
+                .collect(Collectors.toMap(OrderInfo::getId, o -> o));
+
+        // 5. 批量查询品牌信息
+        Map<Integer, String> brandMap = brandDictService.list().stream()
+                .collect(Collectors.toMap(BrandDict::getId, BrandDict::getBrandName));
+
+        // 6. 反查运输状态码（通过中文名查找状态码）
+        String transportStatusCode = null;
+        if (transportStatusName != null && !transportStatusName.isEmpty()) {
+            transportStatusCode = transportStatusDictService.list().stream()
+                    .filter(d -> transportStatusName.equals(d.getStatusName()))
+                    .map(TransportStatusDict::getStatusCode)
+                    .findFirst()
+                    .orElse(null);
+        }
+
+        // 7. 过滤并构建 DTO 列表
+        List<VehicleListItemDTO> result = new ArrayList<>();
+
+        for (VehicleTransit transit : transitList) {
+            OrderInfo order = orderMap.get(transit.getOrderId());
+            if (order == null) {
+                continue;
+            }
+
+            String bName = brandMap.getOrDefault(order.getBrandId(), "未知品牌");
+
+            // 三段模式特殊处理：如果 brandName 是段名称，则按运输状态过滤
+            Set<String> sectionStatuses = null;
+            if ("three-section".equals(type) && brandName != null && SECTION_NAMES.contains(brandName)) {
+                sectionStatuses = getTransportStatusesForSection(brandName);
+            }
+
+            if (sectionStatuses != null) {
+                // 三段-段名过滤：按段对应的运输状态过滤
+                if (!sectionStatuses.contains(transit.getTransportStatus())) {
+                    continue;
+                }
+            } else {
+                // 常规品牌名过滤
+                if (brandName != null && !brandName.isEmpty() && !brandName.equals(bName)) {
+                    continue;
+                }
+            }
+
+            // 运输状态过滤（通过反查的状态码）
+            if (transportStatusCode != null && !transportStatusCode.equals(transit.getTransportStatus())) {
+                continue;
+            }
+
+            // 监控状态过滤：根据 type 选择监控状态字段
+            // 当 transportStatusName 被指定时，始终使用默认 monitorStatus 字段
+            String effectiveMonitorStatus;
+            if (transportStatusName != null && !transportStatusName.isEmpty()) {
+                effectiveMonitorStatus = transit.getMonitorStatus();
+            } else if ("overall".equals(type)) {
+                effectiveMonitorStatus = transit.getOverallMonitorStatus();
+            } else if ("three-section".equals(type)) {
+                effectiveMonitorStatus = transit.getSectionMonitorStatus();
+            } else {
+                effectiveMonitorStatus = transit.getMonitorStatus();
+            }
+
+            if (monitorStatus != null && !monitorStatus.isEmpty()
+                    && !monitorStatus.equals(effectiveMonitorStatus)) {
+                continue;
+            }
+
+            // 构建 DTO
+            VehicleListItemDTO dto = new VehicleListItemDTO();
+            dto.setVin(order.getVin());
+            dto.setBrandName(bName);
+            dto.setTransportStatus(transit.getTransportStatus());
+            dto.setTransportStatusName(statusNameMap.getOrDefault(transit.getTransportStatus(), transit.getTransportStatus()));
+            dto.setMonitorStatus(effectiveMonitorStatus);
+            dto.setOriginCity(order.getOriginCity());
+            dto.setDestCity(order.getDestCity());
+            dto.setOrderReleaseTime(order.getOrderReleaseTime());
+
+            result.add(dto);
+        }
+
+        // 8. 按品牌名称和VIN排序
+        result.sort(Comparator
+                .comparing(VehicleListItemDTO::getBrandName)
+                .thenComparing(VehicleListItemDTO::getVin));
+
+        // 9. 分页
+        int total = result.size();
+        int fromIndex = (pageNum - 1) * pageSize;
+        int toIndex = Math.min(fromIndex + pageSize, total);
+        List<VehicleListItemDTO> pageRecords = fromIndex < total ? result.subList(fromIndex, toIndex) : Collections.emptyList();
+
+        Map<String, Object> paginatedResult = new LinkedHashMap<>();
+        paginatedResult.put("records", pageRecords);
+        paginatedResult.put("total", total);
+        paginatedResult.put("page", pageNum);
+        paginatedResult.put("size", pageSize);
+        return paginatedResult;
     }
 
     /**
