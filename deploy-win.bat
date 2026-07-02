@@ -16,6 +16,14 @@ set BACKUP_DIR=%RORO_HOME%\backups
 set SQL_DIR=%RORO_HOME%\sql
 set DATA_DIR=%RORO_HOME%\data
 
+REM —— Check running from temp directory (not D:\in_transit_monitor itself) ——
+if /i "%~dp0"=="%RORO_HOME%\" (
+    echo [ERROR] deploy-win.bat must be run from a temp directory, not %RORO_HOME%
+    echo   Correct: extract zip to C:\temp\roro-update\, run from there
+    pause
+    exit /b 1
+)
+
 REM -- Load env.bat --
 if exist "%RORO_HOME%\env.bat" (
     echo [INFO] Loading env.bat
@@ -145,7 +153,7 @@ if "%DATETIME%"=="" (
 set TIMESTAMP=!DATETIME:~0,8!_!DATETIME:~8,6!
 
 if not exist "%BACKUP_DIR%" mkdir "%BACKUP_DIR%"
-"%MYSQL_EXE%" -u root -p%DB_PASSWORD% -P %DB_PORT% -h %DB_HOST% --single-transaction --routines --triggers %DB_NAME% > "%BACKUP_DIR%\ro_ro_monitor_!TIMESTAMP!.sql" 2>nul
+"%MYSQL_EXE%" -u root -p%DB_PASSWORD% -P %DB_PORT% -h %DB_HOST% --single-transaction --routines --triggers %DB_NAME% > "%BACKUP_DIR%\ro_ro_monitor_!TIMESTAMP!.sql"
 if !errorlevel! equ 0 (
     echo [OK] Database backed up to %BACKUP_DIR%\ro_ro_monitor_!TIMESTAMP!.sql
 ) else (
