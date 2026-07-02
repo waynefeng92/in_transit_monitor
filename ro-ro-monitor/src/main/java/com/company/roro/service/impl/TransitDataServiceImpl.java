@@ -11,6 +11,7 @@ import com.company.roro.util.StatusCalculator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DuplicateKeyException;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -390,5 +391,101 @@ public class TransitDataServiceImpl implements TransitDataService {
             log.info("  新增成功，ID: {}", transit.getId());
             return true;
         }
+    }
+
+    /**
+     * 定时刷新监控状态 — 每 5 分钟重算所有在途车辆的三个监控状态字段
+     */
+    @Scheduled(cron = "${monitor.refresh-cron:0 */5 * * * ?}")
+    @Transactional
+    public void refreshMonitorStatus() {
+        log.info("开始定时刷新监控状态");
+        long start = System.currentTimeMillis();
+
+        LocalDateTime now = LocalDateTime.now();
+        double warnRatio = monitorConfig.getOverallWarnRatio();
+
+        // 1. 查询所有在途车辆（排除已到达）
+        List<VehicleTransit> transitList = vehicleTransitService.lambdaQuery()
+                .ne(VehicleTransit::getTransportStatus, "ARRIVED")
+                .list();
+
+        if (transitList.isEmpty()) {
+            log.info("无在途车辆需要刷新");
+            return;
+        }
+
+        // 2. 批量加载关联数据
+        List<Integer> orderIds = transitList.stream()
+                .map(VehicleTransit::getOrderId)
+                .distinct()
+                .collect(Collectors.toList());
+
+        Map<Integer, OrderInfo> orderMap = orderInfoService.listByIds(orderIds).stream()
+                .collect(Collectors.toMap(OrderInfo::getId, o -> o));
+
+        List<Integer> routeIds = orderMap.values().stream()
+                .map(OrderInfo::getRouteId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .collect(Collectors.toList());
+
+        Map<Integer, RouteOtdConfig> otdConfigMap = routeOtdConfigService.lambdaQuery()
+                .in(RouteOtdConfig::getRouteId, routeIds)
+                .eq(RouteOtdConfig::getIsActive, 1)
+                .list().stream()
+                .collect(Collectors.toMap(RouteOtdConfig::getRouteId, c -> c, (a, b) -> a));
+
+        // 3. 逐车重算
+        int successCount = 0;
+        int failCount = 0;
+
+        for (VehicleTransit transit : transitList) {
+            try {
+                OrderInfo order = orderMap.get(transit.getOrderId());
+                if (order == null) continue;
+
+                RouteOtdConfig otdConfig = otdConfigMap.get(order.getRouteId());
+
+                // 重算三个监控状态
+                String monitorStatus = StatusCalculator.calculateMonitorStatus(
+                        transit, otdConfig, order.getOrderReleaseTime());
+                String overallMonitorStatus = StatusCalculator.calculateOverallMonitorStatus(
+                        transit, otdConfig, order.getOrderReleaseTime(), now, warnRatio);
+                String sectionMonitorStatus = StatusCalculator.calculateSectionMonitorStatus(
+                        transit, otdConfig, order.getOrderReleaseTime(), now, warnRatio);
+
+                // 只在值发生变化时更新，减少 DB 写入
+                boolean changed = false;
+                if (!Objects.equals(transit.getMonitorStatus(), monitorStatus)) {
+                    transit.setMonitorStatus(monitorStatus);
+                    changed = true;
+                }
+                if (!Objects.equals(transit.getOverallMonitorStatus(), overallMonitorStatus)) {
+                    transit.setOverallMonitorStatus(overallMonitorStatus);
+                    changed = true;
+                }
+                if (!Objects.equals(transit.getSectionMonitorStatus(), sectionMonitorStatus)) {
+                    transit.setSectionMonitorStatus(sectionMonitorStatus);
+                    changed = true;
+                }
+
+                if (changed) {
+                    transit.setUpdatedAt(LocalDateTime.now());
+                    vehicleTransitService.updateById(transit);
+                }
+                successCount++;
+
+            } catch (Exception e) {
+                log.error("刷新监控状态失败, orderId={}, vin={}",
+                        transit.getOrderId(),
+                        orderMap.get(transit.getOrderId()) != null ? orderMap.get(transit.getOrderId()).getVin() : "?",
+                        e);
+                failCount++;
+            }
+        }
+
+        long elapsed = System.currentTimeMillis() - start;
+        log.info("监控状态刷新完成: 成功={}, 失败={}, 耗时={}ms", successCount, failCount, elapsed);
     }
 }

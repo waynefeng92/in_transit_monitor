@@ -23,4 +23,11 @@ public class MonitorConfig {
      * 默认值: 0.8 (即 80%)
      */
     private Double overallWarnRatio = 0.8;
+
+    /**
+     * 监控状态刷新 cron 表达式
+     * 定时重算所有在途车辆的三个监控状态字段
+     * 默认值: 每 5 分钟
+     */
+    private String refreshCron = "0 */5 * * * ?";
 }
