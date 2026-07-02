@@ -32,11 +32,10 @@ echo =============================================
 echo Deploy path: %RORO_HOME%
 
 REM -- First deploy or iterative update? --
-REM Check if database exists (more reliable than file check)
-"%MYSQL_EXE%" -u root -p%DB_PASSWORD% -P %DB_PORT% -h %DB_HOST% -e "USE %DB_NAME%" 2>nul
-if errorlevel 1 (
+REM Check if first deploy marker exists
+if not exist "%RORO_HOME%\.deployed" (
     echo =============================================
-    echo   FIRST DEPLOY MODE (database not found)
+    echo   FIRST DEPLOY MODE
     echo =============================================
     goto :first_deploy
 ) else (
@@ -128,7 +127,7 @@ echo =============================================
 echo   First deploy complete!
 echo   Open http://localhost in browser to verify
 echo =============================================
-echo deployed > "%RORO_HOME%\.first_deploy_done"
+echo. > "%RORO_HOME%\.deployed"
 goto :end
 
 REM ===========================================================================
