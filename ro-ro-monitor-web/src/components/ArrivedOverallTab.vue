@@ -4,8 +4,8 @@
       <div class="chart-layout">
         <div class="chart-card chart-card-bar">
           <div class="chart-card__header">
-            <div class="chart-card__title">品牌 × 效率分布</div>
-            <div class="chart-card__subtitle">按品牌统计高效、正常、延迟车辆分布</div>
+            <div class="chart-card__title">整段效率分布</div>
+            <div class="chart-card__subtitle">按品牌查看高效、正常、延迟数量</div>
           </div>
           <el-skeleton animated>
             <template #template>
@@ -15,8 +15,8 @@
         </div>
         <div class="chart-card chart-card-pie">
           <div class="chart-card__header">
-            <div class="chart-card__title">整体效率占比</div>
-            <div class="chart-card__subtitle">高效、正常、延迟车辆数量比例</div>
+            <div class="chart-card__title">整段效率占比</div>
+            <div class="chart-card__subtitle">各品牌高效、正常、延迟数量比例</div>
           </div>
           <el-skeleton animated>
             <template #template>
@@ -32,19 +32,66 @@
       <div v-else class="chart-layout">
         <div class="chart-card chart-card-bar">
           <div class="chart-card__header">
-            <div class="chart-card__title">品牌 × 效率分布</div>
-            <div class="chart-card__subtitle">按品牌统计高效、正常、延迟车辆分布</div>
+            <div class="chart-card__title">整段效率分布</div>
+            <div class="chart-card__subtitle">按品牌查看高效、正常、延迟数量</div>
           </div>
           <div ref="barChartRef" class="chart-container"></div>
         </div>
         <div class="chart-card chart-card-pie">
           <div class="chart-card__header">
-            <div class="chart-card__title">整体效率占比</div>
-            <div class="chart-card__subtitle">高效、正常、延迟车辆数量比例</div>
+            <div class="chart-card__title">整段效率占比</div>
+            <div class="chart-card__subtitle">各品牌高效、正常、延迟数量比例</div>
           </div>
           <div ref="pieChartRef" class="pie-section__chart"></div>
         </div>
       </div>
+
+      <section v-if="!isEmpty" class="dashboard-panel detail-section" style="margin-top: 20px;">
+        <div class="panel-header">
+          <div>
+            <div class="panel-title">详细数据</div>
+          </div>
+        </div>
+        <el-table :data="tableData" border stripe size="small" max-height="420">
+          <el-table-column prop="brand" label="品牌" min-width="120" fixed />
+          <el-table-column label="高效" width="100" align="center">
+            <template #default="{ row }">
+              <el-tag type="success" effect="dark" class="clickable-tag"
+                @click.stop="handleCellClick(row, 'EFFICIENT')">{{ row.efficient }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="正常" width="100" align="center">
+            <template #default="{ row }">
+              <el-tag type="primary" effect="dark" class="clickable-tag"
+                @click.stop="handleCellClick(row, 'NORMAL')">{{ row.normal }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="延迟" width="100" align="center">
+            <template #default="{ row }">
+              <el-tag type="danger" effect="dark" class="clickable-tag"
+                @click.stop="handleCellClick(row, 'DELAYED')">{{ row.delayed }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="合计" width="100" align="center">
+            <template #default="{ row }">{{ (row.efficient||0) + (row.normal||0) + (row.delayed||0) }}</template>
+          </el-table-column>
+        </el-table>
+        <div v-show="activeDrillCell" class="drilldown-area" style="margin-top:12px">
+          <el-skeleton v-if="drilldownLoading" animated :rows="3" />
+          <template v-else>
+            <VehicleDrilldownTable
+              v-if="drilldownVehicleList.length"
+              :vehicleList="drilldownVehicleList"
+              :total="drilldownTotal"
+              showType="arrived"
+              :currentPage="drilldownPage"
+              @close="handleCloseDrilldown"
+              @page-change="handleDrilldownPageChange"
+            />
+            <el-empty v-else description="暂无匹配车辆" />
+          </template>
+        </div>
+      </section>
     </template>
   </div>
 </template>
@@ -52,6 +99,8 @@
 <script setup>
 import { computed, ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import * as echarts from 'echarts'
+import VehicleDrilldownTable from '@/components/dashboard/VehicleDrilldownTable.vue'
+import { getArrivedVehicleDetails } from '@/api/arrived'
 
 const props = defineProps({
   chartData: {
@@ -104,11 +153,6 @@ const processedData = computed(() => {
   const rawData = data.data || []
 
   let filteredIndices = rawBrands.map((_, i) => i)
-  if (props.brand) {
-    filteredIndices = rawBrands
-      .map((b, i) => (b === props.brand ? i : -1))
-      .filter(i => i !== -1)
-  }
 
   const brands = filteredIndices.map(i => rawBrands[i])
   const categories = rawCategories
@@ -120,13 +164,6 @@ const processedData = computed(() => {
 })
 
 const initCharts = () => {
-  if (barChartRef.value) {
-    barChartInstance = echarts.init(barChartRef.value, 'roro')
-  }
-  if (pieChartRef.value) {
-    pieChartInstance = echarts.init(pieChartRef.value, 'roro')
-  }
-  updateCharts()
   window.addEventListener('resize', handleResize)
 }
 
@@ -136,7 +173,14 @@ const updateCharts = () => {
 }
 
 const updateBarChart = () => {
-  if (!barChartInstance) return
+  if (!barChartInstance || !document.body.contains(barChartInstance.getDom())) {
+    if (barChartRef.value) {
+      barChartInstance?.dispose?.()
+      barChartInstance = echarts.init(barChartRef.value, 'roro')
+    } else {
+      return
+    }
+  }
 
   const { brands, categories, data } = processedData.value
 
@@ -265,7 +309,14 @@ const updateBarChart = () => {
 }
 
 const updatePieChart = () => {
-  if (!pieChartInstance) return
+  if (!pieChartInstance || !document.body.contains(pieChartInstance.getDom())) {
+    if (pieChartRef.value) {
+      pieChartInstance?.dispose?.()
+      pieChartInstance = echarts.init(pieChartRef.value, 'roro')
+    } else {
+      return
+    }
+  }
 
   const { categories, data } = processedData.value
 
@@ -365,7 +416,7 @@ const handleResize = () => {
 
 watch(() => props.chartData, () => {
   nextTick(updateCharts)
-}, { deep: true })
+}, { deep: true, immediate: true })
 
 watch(() => props.brand, () => {
   nextTick(updateCharts)
@@ -402,6 +453,81 @@ onUnmounted(() => {
     pieChartInstance = null
   }
 })
+
+// ── Drilldown table state ──
+const drilldownVehicleList = ref([])
+const drilldownLoading = ref(false)
+const activeDrillCell = ref(null)
+const drilldownTotal = ref(0)
+const drilldownPage = ref(1)
+
+const tableData = computed(() => {
+  const data = props.chartData
+  if (!data || !data.brands) return []
+  return data.brands.map((brand, idx) => ({
+    brand: brand,
+    efficient: data.data?.[idx]?.[0] || 0,
+    normal: data.data?.[idx]?.[1] || 0,
+    delayed: data.data?.[idx]?.[2] || 0
+  }))
+})
+
+const handleCellClick = async (row, bucket) => {
+  const cellKey = `${row.brand}_${bucket}`
+  if (activeDrillCell.value === cellKey) {
+    drilldownVehicleList.value = []
+    activeDrillCell.value = null
+    return
+  }
+  activeDrillCell.value = cellKey
+  drilldownLoading.value = true
+  drilldownVehicleList.value = []
+  drilldownPage.value = 1
+  try {
+    const params = {
+      brandName: row.brand,
+      efficiencyBucket: bucket,
+      page: 1, size: 20
+    }
+    const data = await getArrivedVehicleDetails(params)
+    drilldownVehicleList.value = Array.isArray(data?.records) ? data.records : []
+    drilldownTotal.value = data?.total || 0
+  } catch (e) {
+    console.error('获取车辆明细失败', e)
+  } finally {
+    drilldownLoading.value = false
+  }
+}
+
+const handleCloseDrilldown = () => {
+  drilldownVehicleList.value = []
+  activeDrillCell.value = null
+  drilldownTotal.value = 0
+}
+
+const handleDrilldownPageChange = async (newPage, newSize) => {
+  drilldownPage.value = newPage
+  drilldownLoading.value = true
+  const cellKey = activeDrillCell.value
+  const [brand, bucket] = cellKey.split('_')
+  try {
+    const params = {
+      brandName: brand,
+      efficiencyBucket: bucket,
+      page: newPage,
+      size: newSize || 20
+    }
+    const data = await getArrivedVehicleDetails(params)
+    if (activeDrillCell.value === cellKey) {
+      drilldownVehicleList.value = Array.isArray(data?.records) ? data.records : []
+      drilldownTotal.value = data?.total || 0
+    }
+  } catch (e) {
+    console.error('获取车辆明细失败', e)
+  } finally {
+    drilldownLoading.value = false
+  }
+}
 </script>
 
 <style scoped>
@@ -453,5 +579,41 @@ onUnmounted(() => {
   .chart-layout {
     grid-template-columns: 1fr;
   }
+}
+
+.clickable-tag {
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+.clickable-tag:hover {
+  opacity: 0.7;
+}
+
+.detail-section {
+  border-radius: var(--radius-xl);
+  border: var(--card-border);
+  background: var(--card-gradient);
+  box-shadow: var(--shadow-card);
+  padding: 18px 18px 16px;
+  overflow: hidden;
+}
+
+.detail-section .panel-header {
+  margin-bottom: 14px;
+}
+
+.detail-section .panel-title {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.drilldown-area {
+  animation: drilldownFadeIn 0.3s ease;
+}
+
+@keyframes drilldownFadeIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 </style>

@@ -27,8 +27,8 @@
     <section class="dashboard-panel">
       <div class="panel-header">
         <div>
-          <div class="panel-title">品牌 × 整段监控状态</div>
-          <div class="panel-subtitle">按品牌统计整段正常、预警、超期车辆分布</div>
+          <div class="panel-title">整段监控状态图表</div>
+          <div class="panel-subtitle">按品牌查看正常、预警、超期车辆分布</div>
         </div>
         <div class="panel-actions">
           <el-tag effect="plain" round class="panel-tag">整段监控</el-tag>
@@ -39,30 +39,12 @@
         </div>
       </div>
 
-      <div class="chart-filters">
-        <el-select
-          :model-value="selectedBrand"
-          @update:model-value="$emit('update:selectedBrand', $event)"
-          clearable filterable placeholder="筛选品牌" class="chart-filter"
-        >
-          <el-option v-for="brand in brandOptions" :key="brand" :label="brand" :value="brand" />
-        </el-select>
-        <el-select
-          :model-value="selectedAlertStatus"
-          @update:model-value="$emit('update:selectedAlertStatus', $event)"
-          clearable filterable placeholder="筛选监控状态" class="chart-filter"
-        >
-          <el-option v-for="status in monitorStatusOptions" :key="status" :label="status" :value="status" />
-        </el-select>
-        <el-button text class="filter-reset" @click="$emit('resetFilters')">重置</el-button>
-      </div>
-
       <template v-if="initialLoading">
         <div class="chart-layout">
           <div class="chart-card chart-card-bar">
             <div class="chart-card__header">
-              <div class="chart-card__title">{{ barSectionTitle }}</div>
-              <div class="chart-card__subtitle">按品牌查看整段监控数量</div>
+              <div class="chart-card__title">整段监控状态分布</div>
+              <div class="chart-card__subtitle">按品牌查看正常、预警、超期数量</div>
             </div>
             <el-skeleton animated>
               <el-skeleton-item variant="rect" style="width: 100%; height: 420px; border-radius: 12px;" />
@@ -70,8 +52,8 @@
           </div>
           <div class="chart-card chart-card-pie">
             <div class="chart-card__header">
-              <div class="chart-card__title">{{ pieSectionTitle }}</div>
-              <div class="chart-card__subtitle">{{ pieSectionSubtitle }}</div>
+              <div class="chart-card__title">整段监控状态占比</div>
+              <div class="chart-card__subtitle">各品牌正常、预警、超期数量比例</div>
             </div>
             <el-skeleton animated>
               <el-skeleton-item variant="rect" style="width: 100%; height: 300px; border-radius: 12px;" />
@@ -83,8 +65,8 @@
         <div class="chart-layout">
           <div class="chart-card chart-card-bar">
             <div class="chart-card__header">
-              <div class="chart-card__title">{{ barSectionTitle }}</div>
-              <div class="chart-card__subtitle">按品牌查看整段监控数量</div>
+              <div class="chart-card__title">整段监控状态分布</div>
+              <div class="chart-card__subtitle">按品牌查看正常、预警、超期数量</div>
             </div>
             <div class="chart-container">
               <StackedBarChart
@@ -96,13 +78,12 @@
           </div>
           <div class="chart-card chart-card-pie">
             <div class="chart-card__header">
-              <div class="chart-card__title">{{ pieSectionTitle }}</div>
-              <div class="chart-card__subtitle">{{ pieSectionSubtitle }}</div>
+              <div class="chart-card__title">整段监控状态占比</div>
+              <div class="chart-card__subtitle">各品牌正常、预警、超期数量比例</div>
             </div>
             <div class="pie-section__chart">
               <StatusPieChart
                 :chartData="chartDisplayData"
-                :selected-alert-status="selectedAlertStatus"
                 height="320px"
               />
             </div>
@@ -116,7 +97,7 @@
       <div class="panel-header">
         <div>
           <div class="panel-title">详细数据</div>
-          <div class="panel-subtitle">展示各品牌在整段监控下的正常、预警、超期明细</div>
+          <div class="panel-subtitle">展示各品牌监控明细</div>
         </div>
         <el-button text class="detail-toggle" @click="showDetail = !showDetail">
           {{ showDetail ? '收起明细' : '展开明细' }}
@@ -187,12 +168,10 @@ const props = defineProps({
   chartData: { type: Array, default: () => [] },
   displaySummary: { type: Object, default: () => ({ overallNormal: 0, overallWarn: 0, overallOverdue: 0, total: 0 }) },
   loading: { type: Boolean, default: false },
-  initialLoading: { type: Boolean, default: true },
-  selectedBrand: { type: String, default: '' },
-  selectedAlertStatus: { type: String, default: '' }
+  initialLoading: { type: Boolean, default: true }
 })
 
-defineEmits(['update:selectedBrand', 'update:selectedAlertStatus', 'resetFilters', 'refresh'])
+defineEmits(['refresh'])
 
 const showDetail = ref(true)
 const drilldownVehicleList = ref([])
@@ -204,7 +183,6 @@ const drilldownPageSize = ref(20)
 const drilldownCurrentParams = ref(null)
 
 const monitorStatusOptions = ['正常', '预警', '超期']
-const statusFieldMap = { 正常: 'normal', 预警: 'warn', 超期: 'overdue' }
 const drilldownStatusFieldMap = { normal: 'NORMAL', warn: 'WARN', overdue: 'OVERDUE' }
 
 const handleCellClick = async (row, columnKey) => {
@@ -274,23 +252,8 @@ const handleDrilldownPageChange = async (newPage, newSize) => {
   }
 }
 
-const brandOptions = computed(() => {
-  return Array.from(new Set(props.chartData.map(item => item.brand).filter(Boolean))).sort((a, b) =>
-    a.localeCompare(b, 'zh-Hans-CN')
-  )
-})
-
-const filteredChartData = computed(() => {
-  return props.chartData.filter(item => {
-    const matchBrand = !props.selectedBrand || item.brand === props.selectedBrand
-    const metricField = props.selectedAlertStatus ? statusFieldMap[props.selectedAlertStatus] : ''
-    const matchAlertStatus = !metricField || Number(item[metricField] || 0) > 0
-    return matchBrand && matchAlertStatus
-  })
-})
-
 const chartDisplayData = computed(() => {
-  return filteredChartData.value.map(d => ({
+  return (props.chartData || []).map(d => ({
     brand: d.brand,
     transportStatus: '整段监控',
     normal: d.normal || 0,
@@ -300,11 +263,11 @@ const chartDisplayData = computed(() => {
 })
 
 const tableData = computed(() => {
-  return filteredChartData.value
+  return props.chartData || []
 })
 
 const activeChartStatuses = computed(() => {
-  return props.selectedAlertStatus ? [props.selectedAlertStatus] : monitorStatusOptions
+  return monitorStatusOptions
 })
 
 const summaryCards = computed(() => [
@@ -313,24 +276,6 @@ const summaryCards = computed(() => [
       { key: 'overdue', label: '超期', value: props.displaySummary.overallOverdue, meta: '已超过监控时效' },
       { key: 'total', label: '在途总数', value: props.displaySummary.total, meta: '当前在途车辆总量' }
 ])
-
-const barSectionTitle = computed(() => {
-  const brandLabel = props.selectedBrand || '品牌'
-  return `${brandLabel} × 整段监控分布`
-})
-
-const pieSectionTitle = computed(() => {
-  const brandLabel = props.selectedBrand || '品牌'
-  return props.selectedAlertStatus
-    ? `${brandLabel} ${props.selectedAlertStatus}占比`
-    : `${brandLabel} 监控状态占比`
-})
-
-const pieSectionSubtitle = computed(() => {
-  return props.selectedAlertStatus
-    ? `基于当前筛选结果统计${props.selectedBrand || '该品牌'}${props.selectedAlertStatus}下各状态数量比例`
-    : `基于当前筛选结果统计${props.selectedBrand || '该品牌'}正常、预警、超期数量比例`
-})
 </script>
 
 <style scoped>

@@ -177,9 +177,19 @@ async function handleLogin() {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #f0f4f8 0%, #e2eaf2 100%);
+  background: url('/login.jpg') center/cover no-repeat;
   position: relative;
   overflow: hidden;
+}
+
+/* ===== Background Overlay ===== */
+.login-page::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  z-index: 0;
+  pointer-events: none;
 }
 
 /* ===== Engineering Blueprint Grid ===== */

@@ -110,7 +110,7 @@ public class ChartDataService {
 
         // 如果是整段监控模式
         if ("overall".equals(type)) {
-            return buildOverallBrandStatus(transitList, orderMap, brandMap);
+            return buildOverallBrandStatus(transitList, orderMap, brandMap, filterBrandName);
         }
 
         // 如果是三段监控模式
@@ -119,6 +119,16 @@ public class ChartDataService {
         }
 
         // 6. 分组统计：品牌 → 在途状态（中文） → 监控状态 → 数量
+        // 段类型（segment）的 sectionName 是运输状态中文名，需要反查状态码
+        String segmentTransportStatusCode = null;
+        if (sectionName != null && !sectionName.isEmpty()) {
+            segmentTransportStatusCode = transportStatusDictService.list().stream()
+                    .filter(d -> sectionName.equals(d.getStatusName()))
+                    .map(TransportStatusDict::getStatusCode)
+                    .findFirst()
+                    .orElse(null);
+        }
+
         Map<String, Map<String, Map<String, Long>>> result = new LinkedHashMap<>();
 
         for (VehicleTransit transit : transitList) {
@@ -127,7 +137,19 @@ public class ChartDataService {
                 continue;
             }
 
+            // 段类型 sectionName 过滤：按运输状态码过滤
+            if (segmentTransportStatusCode != null
+                    && !segmentTransportStatusCode.equals(transit.getTransportStatus())) {
+                continue;
+            }
+
             String brandName = brandMap.getOrDefault(order.getBrandId(), "未知品牌");
+
+            // 品牌过滤（服务器端）
+            if (filterBrandName != null && !filterBrandName.isEmpty() && !filterBrandName.equals(brandName)) {
+                continue;
+            }
+
             String statusCode = transit.getTransportStatus();
             String statusName = statusNameMap.getOrDefault(statusCode, statusCode);
             String monitorStatus = transit.getMonitorStatus();
@@ -166,7 +188,8 @@ public class ChartDataService {
      */
     private List<OverallChartDataDTO> buildOverallBrandStatus(List<VehicleTransit> transitList,
                                                                Map<Integer, OrderInfo> orderMap,
-                                                               Map<Integer, String> brandMap) {
+                                                               Map<Integer, String> brandMap,
+                                                               String filterBrandName) {
         // 1. 分组统计：品牌 → 整段监控状态 → 数量
         Map<String, Map<String, Long>> result = new LinkedHashMap<>();
 
@@ -175,6 +198,12 @@ public class ChartDataService {
             if (order == null) continue;
 
             String brandName = brandMap.getOrDefault(order.getBrandId(), "未知品牌");
+
+            // 品牌过滤（服务器端）
+            if (filterBrandName != null && !filterBrandName.isEmpty() && !filterBrandName.equals(brandName)) {
+                continue;
+            }
+
             String overallMonitorStatus = transit.getOverallMonitorStatus();
             if (overallMonitorStatus == null) {
                 overallMonitorStatus = "NORMAL";
@@ -210,10 +239,7 @@ public class ChartDataService {
                                                  Map<Integer, OrderInfo> orderMap,
                                                  Map<Integer, String> brandMap,
                                                  String sectionName, String filterBrandName) {
-        if (sectionName != null && !sectionName.isEmpty()) {
-            return buildSectionBrandDrillDown(transitList, orderMap, brandMap, sectionName);
-        }
-        return buildSectionLevelAggregation(transitList, orderMap, brandMap, filterBrandName);
+        return buildSectionLevelAggregation(transitList, orderMap, brandMap, filterBrandName, sectionName);
     }
 
     /**
@@ -223,7 +249,8 @@ public class ChartDataService {
             List<VehicleTransit> transitList,
             Map<Integer, OrderInfo> orderMap,
             Map<Integer, String> brandMap,
-            String filterBrandName) {
+            String filterBrandName,
+            String filterSectionName) {
         Map<String, Map<String, Long>> result = new LinkedHashMap<>();
 
         for (VehicleTransit transit : transitList) {
@@ -234,6 +261,12 @@ public class ChartDataService {
             String monitorStatus = transit.getSectionMonitorStatus();
             if (monitorStatus == null) {
                 monitorStatus = "NORMAL";
+            }
+
+            // sectionName 筛选（下拉过滤）
+            if (filterSectionName != null && !filterSectionName.isEmpty()
+                    && !filterSectionName.equals(section)) {
+                continue;
             }
 
             // 品牌过滤
@@ -265,53 +298,6 @@ public class ChartDataService {
     }
 
     /**
-     * 单段-品牌钻取：指定段下按品牌统计监控状态
-     */
-    private List<SectionBrandChartDataDTO> buildSectionBrandDrillDown(List<VehicleTransit> transitList,
-                                                                       Map<Integer, OrderInfo> orderMap,
-                                                                       Map<Integer, String> brandMap,
-                                                                       String sectionName) {
-        Map<String, Map<String, Long>> result = new LinkedHashMap<>();
-
-        for (VehicleTransit transit : transitList) {
-            String section = getSectionName(transit.getTransportStatus());
-            if (!sectionName.equals(section)) {
-                continue;
-            }
-
-            OrderInfo order = orderMap.get(transit.getOrderId());
-            if (order == null) {
-                continue;
-            }
-
-            String brandName = brandMap.getOrDefault(order.getBrandId(), "未知品牌");
-            String monitorStatus = transit.getSectionMonitorStatus();
-            if (monitorStatus == null) {
-                monitorStatus = "NORMAL";
-            }
-
-            result.computeIfAbsent(brandName, k -> new LinkedHashMap<>())
-                    .merge(monitorStatus, 1L, Long::sum);
-        }
-
-        List<SectionBrandChartDataDTO> chartData = new ArrayList<>();
-        for (String brand : result.keySet()) {
-            Map<String, Long> counts = result.get(brand);
-
-            SectionBrandChartDataDTO dto = new SectionBrandChartDataDTO();
-            dto.setBrand(brand);
-            dto.setSectionName(sectionName);
-            dto.setNormal(counts.getOrDefault("NORMAL", 0L));
-            dto.setWarn(counts.getOrDefault("WARN", 0L));
-            dto.setOverdue(counts.getOrDefault("OVERDUE", 0L));
-            chartData.add(dto);
-        }
-
-        chartData.sort(Comparator.comparing(SectionBrandChartDataDTO::getBrand));
-        return chartData;
-    }
-
-    /**
      * 获取车辆详情列表（品牌/状态/监控状态钻取）
      *
      * <p>从 getBrandStatusChart 的同源数据中过滤出匹配的车辆明细，
@@ -329,7 +315,7 @@ public class ChartDataService {
     public Map<String, Object> getVehicleDetails(
             LocalDateTime startTime, LocalDateTime endTime,
             String type, String brandName, String transportStatusName,
-            String monitorStatus, Integer page, Integer size) {
+            String monitorStatus, String sectionName, Integer page, Integer size) {
         int pageNum = page != null ? page : 1;
         int pageSize = size != null ? size : 20;
         // 1. 查询所有未到达的在途车辆（与 getBrandStatusChart 相同的基查询）
@@ -412,22 +398,23 @@ public class ChartDataService {
 
             String bName = brandMap.getOrDefault(order.getBrandId(), "未知品牌");
 
-            // 三段模式特殊处理：如果 brandName 是段名称，则按运输状态过滤
-            Set<String> sectionStatuses = null;
-            if ("three-section".equals(type) && brandName != null && SECTION_NAMES.contains(brandName)) {
-                sectionStatuses = getTransportStatusesForSection(brandName);
+            // sectionName 段过滤（新增参数，优先判断）
+            if (sectionName != null && !sectionName.isEmpty()) {
+                Set<String> statuses = getTransportStatusesForSection(sectionName);
+                if (statuses == null || !statuses.contains(transit.getTransportStatus())) {
+                    continue;
+                }
+            } else if ("three-section".equals(type) && brandName != null && SECTION_NAMES.contains(brandName)) {
+                // 向后兼容：brandName 为段名称时按段过滤
+                Set<String> legacyStatuses = getTransportStatusesForSection(brandName);
+                if (legacyStatuses == null || !legacyStatuses.contains(transit.getTransportStatus())) {
+                    continue;
+                }
             }
 
-            if (sectionStatuses != null) {
-                // 三段-段名过滤：按段对应的运输状态过滤
-                if (!sectionStatuses.contains(transit.getTransportStatus())) {
-                    continue;
-                }
-            } else {
-                // 常规品牌名过滤
-                if (brandName != null && !brandName.isEmpty() && !brandName.equals(bName)) {
-                    continue;
-                }
+            // 品牌过滤（只在 brandName 不是段名称时生效）
+            if (brandName != null && !brandName.isEmpty() && !SECTION_NAMES.contains(brandName) && !brandName.equals(bName)) {
+                continue;
             }
 
             // 运输状态过滤（通过反查的状态码）

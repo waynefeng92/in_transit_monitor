@@ -1,11 +1,14 @@
 <template>
   <div class="dashboard">
     <section class="dashboard-monitor-tabs">
-      <el-tabs v-model="activeMonitorTab" @tab-change="handleTabChange">
-        <el-tab-pane label="整段监控" name="overall" />
-        <el-tab-pane label="三段监控" name="three-section" />
-        <el-tab-pane label="分段监控" name="segment" />
-      </el-tabs>
+      <div class="tabs-with-desc">
+        <el-tabs v-model="activeMonitorTab" @tab-change="handleTabChange">
+          <el-tab-pane label="整段监控" name="overall" />
+          <el-tab-pane label="三段监控" name="three-section" />
+          <el-tab-pane label="分段监控" name="segment" />
+        </el-tabs>
+        <span class="tabs-description">{{ tabDescription }}</span>
+      </div>
     </section>
 
     <section class="dashboard-time-filter">
@@ -19,49 +22,42 @@
         value-format="YYYY-MM-DDTHH:mm:ss"
         class="time-filter__picker"
       />
+      <el-select v-model="selectedBrand" clearable filterable placeholder="筛选品牌" class="chart-filter" style="width:160px">
+        <el-option v-for="brand in brandOptions" :key="brand" :label="brand" :value="brand" />
+      </el-select>
+      <el-select v-if="activeMonitorTab !== 'overall'" v-model="selectedSection" clearable filterable
+        :placeholder="activeMonitorTab === 'three-section' ? '段选择' : '分段选择'" class="chart-filter" style="width:140px">
+        <el-option v-for="opt in sectionOptions" :key="opt" :label="opt" :value="opt" />
+      </el-select>
       <el-button type="primary" @click="loadData">查询</el-button>
       <el-button text class="filter-reset" @click="resetAllFilters">重置</el-button>
     </section>
 
     <SegmentTab
       v-if="activeMonitorTab === 'segment'"
-      v-model:selected-brand="selectedBrand"
-      v-model:selected-alert-status="selectedAlertStatus"
       :chart-data="chartData"
       :display-summary="displaySummary"
       :loading="loading"
       :initial-loading="initialLoading"
-      @reset-filters="resetSegmentFilters"
       @refresh="loadData"
     />
 
     <OverallTab
       v-if="activeMonitorTab === 'overall'"
-      v-model:selected-brand="overallSelectedBrand"
-      v-model:selected-alert-status="overallSelectedAlertStatus"
       :chart-data="overallChartData"
       :display-summary="displayOverallSummary"
       :loading="loading"
       :initial-loading="overallInitialLoading"
-      @reset-filters="overallResetFilters"
       @refresh="loadData"
     />
 
     <ThreeSectionTab
       v-if="activeMonitorTab === 'three-section'"
-      v-model:selected-brand="sectionSelectedBrand"
-      v-model:selected-alert-status="sectionSelectedAlertStatus"
       :section-chart-data="sectionChartData"
-      :section-brand-chart-data="sectionBrandChartData"
       :display-summary="displaySectionSummary"
       :loading="loading"
       :initial-loading="sectionInitialLoading"
-      :drill-down-section="sectionDrillDown"
-      :all-brand-options="allBrandOptions"
-      @reset-filters="sectionResetFilters"
       @refresh="loadData"
-      @drilldown="handleSectionDrilldown"
-      @back-to-section="goBackToSectionView"
     />
   </div>
 </template>
@@ -84,7 +80,24 @@ const displaySummary = reactive({ normal: 0, warn: 0, overdue: 0, total: 0 })
 const chartData = ref([])
 const initialLoading = ref(true)
 const selectedBrand = ref('')
-const selectedAlertStatus = ref('')
+const brandOptions = ref([])
+const selectedSection = ref('')
+const sectionOptions = computed(() => {
+  if (activeMonitorTab.value === 'three-section') {
+    return ['前段', '中段', '后段']
+  }
+  if (activeMonitorTab.value === 'segment') {
+    return ['未出库', '集港在途', '已集港待装船', '水运在途', '已到港待卸船', '已卸船待分拨', '分拨在途']
+  }
+  return []
+})
+
+const tabDescription = computed(() => {
+  if (activeMonitorTab.value === 'overall') return '按整段运输链监控状态（正常/预警/超期）'
+  if (activeMonitorTab.value === 'three-section') return '按前段（客户开单-装船）/中段（水路起运-到港卸船）/后段（卸船完成-到店）监控'
+  if (activeMonitorTab.value === 'segment') return '按7个在途分段分别监控：未出库、集港在途、已集港待装船、水运在途、已到港待卸船、已卸船待分拨、分拨在途'
+  return ''
+})
 
 // ── Overall tab state ─────────────────────────────────────────
 const overallSummary = ref({ overallNormal: 0, overallWarn: 0, overallOverdue: 0, total: 0 })
@@ -92,19 +105,11 @@ const displayOverallSummary = reactive({ overallNormal: 0, overallWarn: 0, overa
 const overallChartData = ref([])
 const overallInitialLoading = ref(true)
 
-
-const overallSelectedBrand = ref('')
-const overallSelectedAlertStatus = ref('')
-
 // ── Three-section tab state ───────────────────────────────────
 const sectionSummary = ref({ normal: 0, warn: 0, overdue: 0 })
 const displaySectionSummary = reactive({ normal: 0, warn: 0, overdue: 0, total: 0 })
 const sectionChartData = ref([])
 const sectionInitialLoading = ref(true)
-const sectionSelectedBrand = ref('')
-const sectionSelectedAlertStatus = ref('')
-const sectionDrillDown = ref(null)
-const sectionBrandChartData = ref([])
 
 // ── Number animation ──────────────────────────────────────────
 let animationFrame = null
@@ -169,21 +174,6 @@ watch(() => sectionSummary.value, (val) => {
   }
 }, { deep: true })
 
-// 三段监控品牌筛选 → 重新加载数据
-watch(sectionSelectedBrand, () => {
-  if (activeMonitorTab.value === 'three-section') {
-    loadSectionChartData()
-  }
-})
-
-// ── Brand options ────────────────────────────────────────────
-const allBrandOptions = computed(() => {
-  const brands = new Set()
-  chartData.value.forEach(item => { if (item.brand) brands.add(item.brand) })
-  overallChartData.value.forEach(item => { if (item.brand) brands.add(item.brand) })
-  return Array.from(brands).sort((a, b) => a.localeCompare(b, 'zh-Hans-CN'))
-})
-
 // ── Data fetching ─────────────────────────────────────────────
 const getTimeParams = () => {
   if (!dateRange.value) return {}
@@ -194,7 +184,9 @@ const getTimeParams = () => {
 
 const loadSummary = async () => {
   try {
-    const res = await request.get('/transit/summary', { params: getTimeParams() })
+    const params = { ...getTimeParams(), brandName: selectedBrand.value || undefined }
+    if (selectedSection.value) params.sectionName = selectedSection.value
+    const res = await request.get('/transit/summary', { params })
     summary.value = res
   } catch (error) {
     console.error('加载汇总失败:', error)
@@ -203,7 +195,9 @@ const loadSummary = async () => {
 
 const loadChartData = async () => {
   try {
-    const res = await request.get('/chart/brand-status', { params: getTimeParams() })
+    const params = { ...getTimeParams(), brandName: selectedBrand.value || undefined }
+    if (selectedSection.value) params.sectionName = selectedSection.value
+    const res = await request.get('/chart/brand-status', { params })
     chartData.value = res || []
   } catch (error) {
     console.error('加载图表失败:', error)
@@ -213,7 +207,8 @@ const loadChartData = async () => {
 
 const loadOverallSummary = async () => {
   try {
-    const res = await request.get('/transit/summary', { params: getTimeParams() })
+    const params = { ...getTimeParams(), brandName: selectedBrand.value || undefined }
+    const res = await request.get('/transit/summary', { params })
     overallSummary.value = res
   } catch (error) {
     console.error('加载整段汇总失败:', error)
@@ -222,7 +217,8 @@ const loadOverallSummary = async () => {
 
 const loadOverallChartData = async () => {
   try {
-    const res = await request.get('/chart/brand-status', { params: { ...getTimeParams(), type: 'overall' } })
+    const params = { ...getTimeParams(), type: 'overall', brandName: selectedBrand.value || undefined }
+    const res = await request.get('/chart/brand-status', { params })
     overallChartData.value = res || []
   } catch (error) {
     console.error('加载整段图表失败:', error)
@@ -232,13 +228,20 @@ const loadOverallChartData = async () => {
 
 const loadSectionSummary = async () => {
   try {
-    const res = await request.get('/transit/summary', { params: getTimeParams() })
-    sectionSummary.value = {
+    const params = { ...getTimeParams(), brandName: selectedBrand.value || undefined }
+    if (selectedSection.value) params.sectionName = selectedSection.value
+    const res = await request.get('/transit/summary', { params })
+    const vals = {
       normal: res.sectionNormal || 0,
       warn: res.sectionWarn || 0,
       overdue: res.sectionOverdue || 0,
       total: res.total || 0
     }
+    sectionSummary.value = vals
+    displaySectionSummary.normal = vals.normal
+    displaySectionSummary.warn = vals.warn
+    displaySectionSummary.overdue = vals.overdue
+    displaySectionSummary.total = vals.total
   } catch (error) {
     console.error('加载三段汇总失败:', error)
   }
@@ -246,25 +249,13 @@ const loadSectionSummary = async () => {
 
 const loadSectionChartData = async () => {
   try {
-    const res = await request.get('/chart/brand-status', {
-      params: { ...getTimeParams(), type: 'three-section', brandName: sectionSelectedBrand.value || undefined }
-    })
+    const params = { ...getTimeParams(), type: 'three-section', brandName: selectedBrand.value || undefined }
+    if (selectedSection.value) params.sectionName = selectedSection.value
+    const res = await request.get('/chart/brand-status', { params })
     sectionChartData.value = res || []
   } catch (error) {
     console.error('加载三段图表失败:', error)
     sectionChartData.value = []
-  }
-}
-
-const loadSectionBrandChartData = async (sectionName) => {
-  try {
-    const res = await request.get('/chart/brand-status', {
-      params: { ...getTimeParams(), type: 'three-section', sectionName }
-    })
-    sectionBrandChartData.value = res || []
-  } catch (error) {
-    console.error('加载品牌钻取数据失败:', error)
-    sectionBrandChartData.value = []
   }
 }
 
@@ -305,8 +296,29 @@ const loadData = async () => {
   }
 }
 
-// ── Tab change ────────────────────────────────────────────────
+// ── Tab change & brand options ────────────────────────────────
+const loadBrandOptions = async () => {
+  try {
+    const { getBrandList } = await import('@/api/brand')
+    const list = await getBrandList()
+    brandOptions.value = (list || [])
+      .filter(b => b.isActive !== 0)
+      .map(b => b.brandName)
+      .sort((a, b) => a.localeCompare(b, 'zh-Hans-CN'))
+  } catch (e) {
+    console.error('加载品牌列表失败', e)
+  }
+}
+
+const resetFilters = () => {
+  selectedBrand.value = ''
+  selectedSection.value = ''
+  loadData()
+}
+
 const handleTabChange = (tabName) => {
+  selectedBrand.value = ''
+  selectedSection.value = ''
   if (tabName === 'segment') {
     initialLoading.value = true
     loadData()
@@ -315,53 +327,20 @@ const handleTabChange = (tabName) => {
   } else if (tabName === 'three-section') {
     loadSectionData()
   }
-  if (tabName !== 'three-section') {
-    sectionDrillDown.value = null
-    sectionBrandChartData.value = []
-    sectionSelectedBrand.value = ''
-    sectionSelectedAlertStatus.value = ''
-  }
 }
 
 // ── Filter resets ─────────────────────────────────────────────
-const resetSegmentFilters = () => {
-  selectedBrand.value = ''
-  selectedAlertStatus.value = ''
-}
-
-const overallResetFilters = () => {
-  overallSelectedBrand.value = ''
-  overallSelectedAlertStatus.value = ''
-}
-
-const sectionResetFilters = () => {
-  sectionSelectedBrand.value = ''
-  sectionSelectedAlertStatus.value = ''
-}
-
 const resetAllFilters = () => {
   dateRange.value = null
-  resetSegmentFilters()
-  overallResetFilters()
-  sectionResetFilters()
+  selectedBrand.value = ''
+  selectedSection.value = ''
   loadData()
-}
-
-// ── Three-section drilldown ───────────────────────────────────
-const handleSectionDrilldown = (sectionName) => {
-  sectionDrillDown.value = sectionName
-  loadSectionBrandChartData(sectionName)
-}
-
-const goBackToSectionView = () => {
-  sectionDrillDown.value = null
-  sectionBrandChartData.value = []
-  sectionSelectedBrand.value = ''
 }
 
 // ── Lifecycle ─────────────────────────────────────────────────
 onMounted(() => {
   loadData()
+  loadBrandOptions()
 })
 
 onUnmounted(() => {
@@ -398,6 +377,17 @@ onUnmounted(() => {
 
 .time-filter__picker {
   width: 380px;
+}
+
+.dashboard-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 20px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-primary-lightest);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(246, 250, 255, 0.98));
+  box-shadow: 0 12px 30px rgba(26, 65, 122, 0.08);
 }
 
 .chart-container {

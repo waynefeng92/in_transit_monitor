@@ -10,13 +10,62 @@
     <template v-else>
       <el-empty v-if="!hasData" description="暂无分段监控数据" />
       <div v-else ref="chartRef" class="segment-chart"></div>
+
+      <section v-if="hasData" class="dashboard-panel detail-section" style="margin-top: 20px;">
+        <div class="panel-header">
+          <div>
+            <div class="panel-title">详细数据</div>
+          </div>
+        </div>
+        <el-table :data="tableData" border stripe size="small" max-height="420">
+          <el-table-column prop="brandName" label="品牌" min-width="100" fixed />
+          <el-table-column prop="sectionName" label="分段" min-width="140" />
+          <el-table-column label="高效" width="100" align="center">
+            <template #default="{ row }">
+              <el-tag type="success" effect="dark" class="clickable-tag"
+                @click.stop="handleCellClick(row, 'EFFICIENT')">{{ row.efficient }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="正常" width="100" align="center">
+            <template #default="{ row }">
+              <el-tag type="primary" effect="dark" class="clickable-tag"
+                @click.stop="handleCellClick(row, 'NORMAL')">{{ row.normal }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="延迟" width="100" align="center">
+            <template #default="{ row }">
+              <el-tag type="danger" effect="dark" class="clickable-tag"
+                @click.stop="handleCellClick(row, 'DELAYED')">{{ row.delayed }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="合计" width="100" align="center">
+            <template #default="{ row }">{{ (row.efficient||0) + (row.normal||0) + (row.delayed||0) }}</template>
+          </el-table-column>
+        </el-table>
+        <div v-show="activeDrillCell" class="drilldown-area" style="margin-top:12px">
+          <el-skeleton v-if="drilldownLoading" animated :rows="3" />
+          <template v-else>
+            <VehicleDrilldownTable
+              v-if="drilldownVehicleList.length"
+              :vehicleList="drilldownVehicleList"
+              :total="drilldownTotal"
+              showType="arrived"
+              @close="handleCloseDrilldown"
+              @page-change="handleDrilldownPageChange"
+            />
+            <el-empty v-else description="暂无匹配车辆" />
+          </template>
+        </div>
+      </section>
     </template>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import * as echarts from 'echarts'
+import VehicleDrilldownTable from '@/components/dashboard/VehicleDrilldownTable.vue'
+import { getArrivedVehicleDetails } from '@/api/arrived'
 
 const props = defineProps({
   chartData: {
@@ -28,6 +77,10 @@ const props = defineProps({
     default: false
   },
   brand: {
+    type: String,
+    default: ''
+  },
+  selectedSection: {
     type: String,
     default: ''
   }
@@ -62,6 +115,12 @@ const BUCKET_CONFIG = [
 
 const chartRef = ref(null)
 let chartInstance = null
+
+// ── Drilldown table state ──
+const drilldownVehicleList = ref([])
+const drilldownLoading = ref(false)
+const activeDrillCell = ref(null)
+const drilldownTotal = ref(0)
 
 const filteredData = computed(() => {
   // Backend returns matrix DTO; brand filtering is done server-side via query param
@@ -220,14 +279,20 @@ const buildOption = () => {
 }
 
 const initChart = () => {
-  if (!chartRef.value) return
-  chartInstance = echarts.init(chartRef.value, 'roro')
-  updateChart()
-  window.addEventListener('resize', handleResize)
+  nextTick(() => {
+    window.addEventListener('resize', handleResize)
+  })
 }
 
 const updateChart = () => {
-  if (!chartInstance) return
+  if (!chartInstance || !document.body.contains(chartInstance.getDom())) {
+    if (chartRef.value) {
+      chartInstance?.dispose?.()
+      chartInstance = echarts.init(chartRef.value, 'roro')
+    } else {
+      return
+    }
+  }
   if (!hasData.value) {
     chartInstance.setOption({
       title: {
@@ -251,9 +316,79 @@ const handleResize = () => {
   }
 }
 
+// ── Drilldown table methods ──
+
+const tableData = computed(() => {
+  const data = props.chartData
+  if (!data || !data.brands) return []
+  const brandFilter = props.brand || ''
+  return data.brands.map((item, idx) => ({
+    brandName: brandFilter || (props.selectedSection ? SEGMENT_LABEL_MAP[item] || item : '全部'),
+    sectionName: props.selectedSection || SEGMENT_LABEL_MAP[item] || item,
+    efficient: data.data?.[idx]?.[0] || 0,
+    normal: data.data?.[idx]?.[1] || 0,
+    delayed: data.data?.[idx]?.[2] || 0
+  }))
+})
+
+const handleCellClick = async (row, bucket) => {
+  const cellKey = `${row.sectionName}_${bucket}`
+  if (activeDrillCell.value === cellKey) {
+    drilldownVehicleList.value = []
+    activeDrillCell.value = null
+    return
+  }
+  activeDrillCell.value = cellKey
+  drilldownLoading.value = true
+  drilldownVehicleList.value = []
+  try {
+    const params = {
+      sectionName: row.sectionName,
+      efficiencyBucket: bucket,
+      page: 1, size: 20
+    }
+    const data = await getArrivedVehicleDetails(params)
+    drilldownVehicleList.value = Array.isArray(data?.records) ? data.records : []
+    drilldownTotal.value = data?.total || 0
+  } catch (e) {
+    console.error('获取车辆明细失败', e)
+  } finally {
+    drilldownLoading.value = false
+  }
+}
+
+const handleCloseDrilldown = () => {
+  drilldownVehicleList.value = []
+  activeDrillCell.value = null
+  drilldownTotal.value = 0
+}
+
+const handleDrilldownPageChange = async (newPage, newSize) => {
+  drilldownLoading.value = true
+  const cellKey = activeDrillCell.value
+  try {
+    const [name, bucket] = cellKey.split('_')
+    const params = {
+      sectionName: name,
+      efficiencyBucket: bucket,
+      page: newPage,
+      size: newSize || 20
+    }
+    const data = await getArrivedVehicleDetails(params)
+    if (activeDrillCell.value === cellKey) {
+      drilldownVehicleList.value = Array.isArray(data?.records) ? data.records : []
+      drilldownTotal.value = data?.total || 0
+    }
+  } catch (e) {
+    console.error('获取车辆明细失败', e)
+  } finally {
+    drilldownLoading.value = false
+  }
+}
+
 watch(() => props.chartData, () => {
-  updateChart()
-}, { deep: true })
+  nextTick(updateChart)
+}, { immediate: true })
 
 watch(() => props.brand, () => {
   updateChart()
@@ -290,5 +425,35 @@ onUnmounted(() => {
 .segment-chart {
   width: 100%;
   height: 520px;
+}
+
+.clickable-tag {
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+.clickable-tag:hover {
+  opacity: 0.7;
+}
+.drilldown-area {
+  margin-top: 12px;
+}
+
+.detail-section {
+  border-radius: var(--radius-xl);
+  border: var(--card-border);
+  background: var(--card-gradient);
+  box-shadow: var(--shadow-card);
+  padding: 18px 18px 16px;
+  overflow: hidden;
+}
+
+.detail-section .panel-header {
+  margin-bottom: 14px;
+}
+
+.detail-section .panel-title {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--text-primary);
 }
 </style>

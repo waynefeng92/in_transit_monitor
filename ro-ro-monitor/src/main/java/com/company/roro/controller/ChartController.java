@@ -46,8 +46,9 @@ public class ChartController {
             @RequestParam(name = "brandName", required = false) String brandName,
             @RequestParam(name = "transportStatusName", required = false) String transportStatusName,
             @RequestParam(name = "monitorStatus", required = false) String monitorStatus,
+            @RequestParam(name = "sectionName", required = false) String sectionName,
             @RequestParam(name = "page", defaultValue = "1") Integer page,
             @RequestParam(name = "size", defaultValue = "20") Integer size) {
-        return Result.success(chartDataService.getVehicleDetails(startTime, endTime, type, brandName, transportStatusName, monitorStatus, page, size));
+        return Result.success(chartDataService.getVehicleDetails(startTime, endTime, type, brandName, transportStatusName, monitorStatus, sectionName, page, size));
     }
 }

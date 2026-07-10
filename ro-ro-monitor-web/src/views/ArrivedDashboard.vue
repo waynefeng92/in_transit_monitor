@@ -1,11 +1,14 @@
 <template>
   <div class="arrived-dashboard">
     <section class="dashboard-monitor-tabs">
-      <el-tabs v-model="activeMonitorTab" @tab-change="handleTabChange">
-        <el-tab-pane label="整段监控" name="overall" />
-        <el-tab-pane label="三段监控" name="three-section" />
-        <el-tab-pane label="分段监控" name="segment" />
-      </el-tabs>
+      <div class="tabs-with-desc">
+        <el-tabs v-model="activeMonitorTab" @tab-change="handleTabChange">
+          <el-tab-pane label="整段监控" name="overall" />
+          <el-tab-pane label="三段监控" name="three-section" />
+          <el-tab-pane label="分段监控" name="segment" />
+        </el-tabs>
+        <span class="tabs-description">{{ tabDescription }}</span>
+      </div>
     </section>
 
     <section class="dashboard-time-filter">
@@ -31,6 +34,21 @@
           :key="brand"
           :label="brand"
           :value="brand"
+        />
+      </el-select>
+      <el-select
+        v-if="activeMonitorTab !== 'overall'"
+        v-model="selectedSection"
+        clearable
+        filterable
+        :placeholder="activeMonitorTab === 'three-section' ? '三段选择' : '分段选择'"
+        class="chart-filter"
+      >
+        <el-option
+          v-for="seg in sectionOptions"
+          :key="seg"
+          :label="seg"
+          :value="seg"
         />
       </el-select>
       <el-button type="primary" @click="loadData">查询</el-button>
@@ -89,6 +107,7 @@
             :chart-data="chartData"
             :loading="loading"
             :brand="selectedBrand"
+            :selectedSection="selectedSection"
           />
         </section>
       </div>
@@ -112,6 +131,7 @@
             :chart-data="chartData"
             :loading="loading"
             :brand="selectedBrand"
+            :selectedSection="sectionFilter"
             @drilldown="handleDrilldown"
             @back="handleBack"
           />
@@ -172,6 +192,7 @@
 import { computed, ref, watch, onMounted } from 'vue'
 import { Refresh } from '@element-plus/icons-vue'
 import request from '@/api/request'
+import { getBrandList } from '@/api/brand'
 import ArrivedOverallTab from '@/components/ArrivedOverallTab.vue'
 import ArrivedSegmentTab from '@/components/ArrivedSegmentTab.vue'
 import ArrivedThreeSectionTab from '@/components/ArrivedThreeSectionTab.vue'
@@ -184,6 +205,7 @@ const dateRange = ref([
   new Date().toISOString().substring(0, 10) + 'T00:00:00'
 ])
 const selectedBrand = ref('')
+const selectedSection = ref('')
 const loading = ref(false)
 const initialLoading = ref(true)
 
@@ -197,6 +219,23 @@ const summary = ref({
 
 const chartData = ref([])
 const brandOptions = ref([])
+
+const sectionOptions = computed(() => {
+  if (activeMonitorTab.value === 'three-section') {
+    return ['前段', '中段', '后段']
+  }
+  if (activeMonitorTab.value === 'segment') {
+    return ['未出库', '集港在途', '已集港待装船', '水运在途', '已到港待卸船', '已卸船待分拨', '分拨在途']
+  }
+  return []
+})
+
+const tabDescription = computed(() => {
+  if (activeMonitorTab.value === 'overall') return '按整段运输链效率（高效/正常/延迟）'
+  if (activeMonitorTab.value === 'three-section') return '按前段（客户开单-装船）/中段（水路起运-到港卸船）/后段（卸船完成-到店）效率'
+  if (activeMonitorTab.value === 'segment') return '按7个在途分段分别评估效率：未出库、集港在途、已集港待装船、水运在途、已到港待卸船、已卸船待分拨、分拨在途'
+  return ''
+})
 
 const currentSectionName = ref('')
 const statisticsPeriod = ref('week')
@@ -231,6 +270,8 @@ const summaryCards = computed(() => [
   }
 ])
 
+const sectionFilter = computed(() => selectedSection.value || currentSectionName.value)
+
 const hasData = computed(() => {
   const s = summary.value
   return (s.efficientCount || 0) + (s.normalCount || 0) + (s.delayedCount || 0) + (s.totalCount || 0) > 0
@@ -250,7 +291,13 @@ const getTimeParams = () => {
 
 const loadSummary = async () => {
   try {
-    const res = await request.get('/arrived/summary', { params: getTimeParams() })
+    const params = {
+      ...getTimeParams(),
+      ...(selectedBrand.value ? { brandName: selectedBrand.value } : {}),
+      ...(selectedSection.value ? { sectionName: selectedSection.value }
+          : currentSectionName.value ? { sectionName: currentSectionName.value } : {}),
+    }
+    const res = await request.get('/arrived/summary', { params })
     summary.value = res || { efficientCount: 0, normalCount: 0, delayedCount: 0, totalCount: 0, avgEfficiency: 0 }
   } catch (error) {
     console.error('加载到达汇总失败:', error)
@@ -260,15 +307,16 @@ const loadSummary = async () => {
 
 const loadChartData = async (type, section) => {
   try {
-    const params = { ...getTimeParams(), type: type || activeMonitorTab.value }
-    if (section || currentSectionName.value) {
-      params.sectionName = section || currentSectionName.value
+    const params = {
+      ...getTimeParams(),
+      type: type || activeMonitorTab.value,
+      ...(selectedBrand.value ? { brandName: selectedBrand.value } : {})
+    }
+    if (section || selectedSection.value || currentSectionName.value) {
+      params.sectionName = section || selectedSection.value || currentSectionName.value
     }
     const res = await request.get('/arrived/chart', { params })
     chartData.value = res || null
-    // Extract brand options from chart data
-    const brands = (res && res.brands) ? res.brands.filter(Boolean) : []
-    brandOptions.value = brands.sort((a, b) => a.localeCompare(b, 'zh-Hans-CN'))
   } catch (error) {
     console.error('加载到达图表数据失败:', error)
     chartData.value = null
@@ -282,7 +330,7 @@ const loadStatistics = async (period) => {
       params: {
         period: period || statisticsPeriod.value,
         ...getTimeParams(),
-        ...(selectedBrand.value ? { brandId: selectedBrand.value } : {})
+        ...(selectedBrand.value ? { brandName: selectedBrand.value } : {})
       }
     })
     statisticsData.value = res || []
@@ -291,6 +339,18 @@ const loadStatistics = async (period) => {
     statisticsData.value = []
   } finally {
     statisticsLoading.value = false
+  }
+}
+
+const loadBrandOptions = async () => {
+  try {
+    const list = await getBrandList()
+    brandOptions.value = (list || [])
+      .filter(b => b.isActive !== 0)
+      .map(b => b.brandName)
+      .sort((a, b) => a.localeCompare(b, 'zh-Hans-CN'))
+  } catch (e) {
+    console.error('加载品牌列表失败', e)
   }
 }
 
@@ -310,6 +370,7 @@ const loadData = async () => {
 
 const handleTabChange = (tabName) => {
   activeMonitorTab.value = tabName
+  selectedSection.value = ''
   loadChartData(tabName)
 }
 
@@ -319,21 +380,26 @@ const handleStatisticsPeriodChange = (period) => {
 
 const handleDrilldown = (section) => {
   currentSectionName.value = section
+  selectedSection.value = ''
   loadChartData(activeMonitorTab.value, section)
 }
 
 const handleBack = () => {
   currentSectionName.value = ''
+  selectedSection.value = ''
   loadChartData(activeMonitorTab.value)
 }
 
 const resetFilters = () => {
   dateRange.value = null
   selectedBrand.value = ''
+  selectedSection.value = ''
+  currentSectionName.value = ''
   loadData()
 }
 
 onMounted(() => {
+  loadBrandOptions()
   loadData()
   loadStatistics('week')
 })

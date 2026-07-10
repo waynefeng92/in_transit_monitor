@@ -56,7 +56,7 @@ public class SnapshotScheduler {
                 snapshot.setTabType(tabType);
 
                 // 汇总数据
-                Object summary = transitSummaryService.summary(null, null);
+                Object summary = transitSummaryService.summary(null, null, null, null);
                 snapshot.setSummaryJson(objectMapper.writeValueAsString(summary));
 
                 // 图表数据（品牌-状态分组）
