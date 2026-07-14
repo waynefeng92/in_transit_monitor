@@ -216,12 +216,12 @@ const updateChart = () => {
     dataZoom: [
       {
         type: 'slider',
-        start: 0,
-        end: 100,
-        bottom: 10,
-        height: 20,
-        handleSize: '80%',
-        handleStyle: { color: '#1d72f3' }
+        start: 0, end: 100,
+        height: 8, bottom: 8,
+        showDetail: false,
+        borderColor: 'transparent',
+        backgroundColor: 'rgba(0,0,0,0.04)',
+        fillerColor: 'rgba(64,158,255,0.25)'
       },
       {
         type: 'inside',

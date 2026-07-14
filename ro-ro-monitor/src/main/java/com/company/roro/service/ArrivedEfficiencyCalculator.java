@@ -74,6 +74,21 @@ public class ArrivedEfficiencyCalculator {
     }
 
     /**
+     * 计算 OTD 消耗比（实际耗时 / 标准OTD × 100）
+     * > 100% = 超时，< 100% = 省时，更符合直觉
+     */
+    public Double calculateConsumptionRatio(LocalDateTime orderReleaseTime, LocalDateTime arriveShopTime, RouteOtdConfig config) {
+        if (orderReleaseTime == null || arriveShopTime == null || config == null) {
+            return null;
+        }
+        double actualHours = Duration.between(orderReleaseTime, arriveShopTime).toMinutes() / 60.0;
+        if (actualHours <= 0) return null;
+        double totalOtd = getTotalOtd(config);
+        if (totalOtd <= 0) return null;
+        return actualHours / totalOtd * 100.0;
+    }
+
+    /**
      * 确定整体效率分桶
      * @param orderReleaseTime 订单释放时间
      * @param arriveShopTime   到店时间

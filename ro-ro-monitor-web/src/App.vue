@@ -49,6 +49,10 @@
               <el-icon><VideoPlay /></el-icon>
               <span>历史回放</span>
             </el-menu-item>
+            <el-menu-item index="/statistics">
+              <el-icon><DataAnalysis /></el-icon>
+              <span>统计分析</span>
+            </el-menu-item>
             <el-menu-item index="/vehicle-detail">
               <el-icon><Search /></el-icon>
               <span>车辆详情</span>

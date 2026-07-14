@@ -1,12 +1,9 @@
 package com.company.roro.controller;
 
-import com.company.roro.dto.ArrivedChartDataDTO;
-import com.company.roro.dto.ArrivedSummaryDTO;
-import com.company.roro.dto.ArrivedWeeklyMonthlyDTO;
-import com.company.roro.dto.Result;
+import com.company.roro.dto.*;
 import com.company.roro.entity.BrandDict;
-import com.company.roro.service.ArrivedVehicleService;
 import com.company.roro.service.BrandDictService;
+import com.company.roro.service.StatisticsService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
@@ -14,19 +11,12 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDateTime;
 import java.util.List;
 
-/**
- * 已到达车辆监控接口
- *
- * 功能：查询已到达车辆的汇总数据、效率分桶图表、周/月趋势统计
- *
- * @author roro-team
- */
 @RestController
-@RequestMapping("/api/arrived")
-public class ArrivedController {
+@RequestMapping("/api/statistics")
+public class StatisticsController {
 
     @Autowired
-    private ArrivedVehicleService arrivedVehicleService;
+    private StatisticsService statisticsService;
 
     @Autowired
     private BrandDictService brandDictService;
@@ -34,53 +24,44 @@ public class ArrivedController {
     private Long resolveBrandId(String brandName) {
         if (brandName == null || brandName.isEmpty()) return null;
         BrandDict brand = brandDictService.lambdaQuery()
-                .eq(BrandDict::getBrandName, brandName)
-                .one();
+                .eq(BrandDict::getBrandName, brandName).one();
         return brand != null ? Long.valueOf(brand.getId()) : null;
     }
 
-    /**
-     * 获取已到达车辆汇总数据
-     */
     @GetMapping("/summary")
-    public Result<ArrivedSummaryDTO> summary(
-            @RequestParam(name = "startTime", required = false)
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startTime,
-            @RequestParam(name = "endTime", required = false)
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endTime,
-            @RequestParam(name = "brandName", required = false) String brandName) {
-        Long brandId = resolveBrandId(brandName);
-        return Result.success(arrivedVehicleService.calculateSummary(startTime, endTime, brandId));
-    }
-
-    /**
-     * 获取已到达车辆图表数据
-     */
-    @GetMapping("/chart")
-    public Result<ArrivedChartDataDTO> chart(
-            @RequestParam(name = "type") String type,
+    public Result<StatisticsSummaryDTO> summary(
             @RequestParam(name = "startTime", required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startTime,
             @RequestParam(name = "endTime", required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endTime,
             @RequestParam(name = "brandName", required = false) String brandName,
-            @RequestParam(name = "sectionName", required = false) String sectionName) {
+            @RequestParam(name = "routeId", required = false) Integer routeId) {
         Long brandId = resolveBrandId(brandName);
-        return Result.success(arrivedVehicleService.calculateChartData(type, startTime, endTime, brandId, sectionName));
+        return Result.success(statisticsService.calculateSummary(startTime, endTime, brandId, routeId));
     }
 
-    /**
-     * 获取已到达车辆周/月趋势统计
-     */
-    @GetMapping("/statistics")
-    public Result<List<ArrivedWeeklyMonthlyDTO>> statistics(
-            @RequestParam(name = "period") String period,
+    @GetMapping("/trend")
+    public Result<List<TrendStatDTO>> trend(
+            @RequestParam(name = "period", defaultValue = "week") String period,
             @RequestParam(name = "startTime", required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startTime,
             @RequestParam(name = "endTime", required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endTime,
-            @RequestParam(name = "brandName", required = false) String brandName) {
+            @RequestParam(name = "brandName", required = false) String brandName,
+            @RequestParam(name = "routeId", required = false) Integer routeId) {
         Long brandId = resolveBrandId(brandName);
-        return Result.success(arrivedVehicleService.calculateWeeklyMonthly(period, startTime, endTime, brandId));
+        return Result.success(statisticsService.calculateTrend(period, startTime, endTime, brandId, routeId));
+    }
+
+    @GetMapping("/by-route")
+    public Result<List<DimensionStatDTO>> byRoute(
+            @RequestParam(name = "startTime", required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startTime,
+            @RequestParam(name = "endTime", required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endTime,
+            @RequestParam(name = "brandName", required = false) String brandName,
+            @RequestParam(name = "routeId", required = false) Integer routeId) {
+        Long brandId = resolveBrandId(brandName);
+        return Result.success(statisticsService.calculateByRoute(startTime, endTime, brandId, routeId));
     }
 }

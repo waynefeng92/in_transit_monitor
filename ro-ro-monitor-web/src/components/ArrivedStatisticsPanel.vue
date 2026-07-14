@@ -85,7 +85,7 @@ const updateChart = () => {
       formatter: (params) => {
         let result = `<div style="font-weight:600;margin-bottom:6px;">${params[0].name}</div>`
         params.forEach(item => {
-          const suffix = item.seriesName === '平均效率' ? '%' : ''
+          const suffix = item.seriesName === 'OTD消耗比' ? '%' : ''
           result += `<div style="display:flex;align-items:center;gap:6px;margin-top:4px;">
             <span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${item.color};"></span>
             <span>${item.seriesName}: <b>${item.value}${suffix}</b></span>
@@ -95,7 +95,7 @@ const updateChart = () => {
       }
     },
     legend: {
-      data: ['到港数量', '平均效率'],
+      data: ['到港数量', 'OTD消耗比'],
       top: 10,
       left: 'center',
       itemWidth: 14,
@@ -152,7 +152,7 @@ const updateChart = () => {
       },
       {
         type: 'value',
-        name: '平均效率 (%)',
+        name: 'OTD消耗比 (%)',
         min: 0,
         max: yAxisMax.value,
         nameTextStyle: {
@@ -192,7 +192,7 @@ const updateChart = () => {
         }
       },
       {
-        name: '平均效率',
+        name: 'OTD消耗比',
         type: 'line',
         yAxisIndex: 1,
         data: avgEfficiencies.value,
@@ -234,13 +234,13 @@ const updateChart = () => {
           data: [
             {
               yAxis: 80,
-              name: '预警阈值 80%',
+              name: '高效阈值 80%',
               lineStyle: { color: '#e6a23c' },
               label: { backgroundColor: '#e6a23c' }
             },
             {
               yAxis: 100,
-              name: 'OTD阈值 100%',
+              name: '标准OTD 100%',
               lineStyle: { color: '#67c23a' },
               label: { backgroundColor: '#67c23a' }
             }

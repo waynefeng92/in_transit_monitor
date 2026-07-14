@@ -37,4 +37,4 @@ monitor:
   overall-warn-ratio: 0.8
   refresh-cron: "0 */5 * * * ?"  # 每5分钟刷新在途车辆监控状态
   snapshot:
-    cron: "0 */30 * * * ?"  # 每半小时采集一次快照，默认cron表达式，可自定义
+    cron: "0 0 */4 * * ?"  # 每4小时采集一次快照，默认cron表达式，可自定义

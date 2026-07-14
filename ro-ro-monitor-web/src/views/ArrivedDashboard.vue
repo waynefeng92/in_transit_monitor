@@ -161,30 +161,6 @@
         </section>
       </div>
     </template>
-
-    <section class="dashboard-panel dashboard-panel-statistics">
-      <div class="card-header">
-        <div>
-          <div class="panel-title">到达统计</div>
-          <div class="panel-subtitle">按周期统计到达车辆效率分布</div>
-        </div>
-        <div class="header-actions">
-          <el-radio-group v-model="statisticsPeriod" size="small" @change="handleStatisticsPeriodChange">
-            <el-radio-button label="week">周</el-radio-button>
-            <el-radio-button label="month">月</el-radio-button>
-          </el-radio-group>
-          <el-button type="primary" @click="loadStatistics(statisticsPeriod)" :loading="statisticsLoading">
-            <el-icon><Refresh /></el-icon>
-            刷新
-          </el-button>
-        </div>
-      </div>
-      <ArrivedStatisticsPanel
-        :statistics-data="statisticsData"
-        :loading="statisticsLoading"
-        :period="statisticsPeriod"
-      />
-    </section>
   </div>
 </template>
 
@@ -196,7 +172,6 @@ import { getBrandList } from '@/api/brand'
 import ArrivedOverallTab from '@/components/ArrivedOverallTab.vue'
 import ArrivedSegmentTab from '@/components/ArrivedSegmentTab.vue'
 import ArrivedThreeSectionTab from '@/components/ArrivedThreeSectionTab.vue'
-import ArrivedStatisticsPanel from '@/components/ArrivedStatisticsPanel.vue'
 
 // State
 const activeMonitorTab = ref('overall')
@@ -238,9 +213,6 @@ const tabDescription = computed(() => {
 })
 
 const currentSectionName = ref('')
-const statisticsPeriod = ref('week')
-const statisticsData = ref([])
-const statisticsLoading = ref(false)
 
 // Computed
 const summaryCards = computed(() => [
@@ -323,25 +295,6 @@ const loadChartData = async (type, section) => {
   }
 }
 
-const loadStatistics = async (period) => {
-  statisticsLoading.value = true
-  try {
-    const res = await request.get('/arrived/statistics', {
-      params: {
-        period: period || statisticsPeriod.value,
-        ...getTimeParams(),
-        ...(selectedBrand.value ? { brandName: selectedBrand.value } : {})
-      }
-    })
-    statisticsData.value = res || []
-  } catch (error) {
-    console.error('加载到达统计数据失败:', error)
-    statisticsData.value = []
-  } finally {
-    statisticsLoading.value = false
-  }
-}
-
 const loadBrandOptions = async () => {
   try {
     const list = await getBrandList()
@@ -374,10 +327,6 @@ const handleTabChange = (tabName) => {
   loadChartData(tabName)
 }
 
-const handleStatisticsPeriodChange = (period) => {
-  loadStatistics(period)
-}
-
 const handleDrilldown = (section) => {
   currentSectionName.value = section
   selectedSection.value = ''
@@ -401,7 +350,6 @@ const resetFilters = () => {
 onMounted(() => {
   loadBrandOptions()
   loadData()
-  loadStatistics('week')
 })
 </script>
 
@@ -592,14 +540,6 @@ onMounted(() => {
     var(--card-gradient),
     radial-gradient(circle at top, rgba(64, 158, 255, 0.08), transparent 36%);
   box-shadow: var(--shadow-card);
-}
-
-.dashboard-panel-statistics .card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 16px;
-  margin-bottom: 18px;
 }
 
 .panel-title {

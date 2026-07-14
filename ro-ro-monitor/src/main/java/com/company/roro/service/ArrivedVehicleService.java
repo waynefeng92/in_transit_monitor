@@ -482,7 +482,7 @@ public class ArrivedVehicleService {
             }
 
             RouteOtdConfig config = order.getRouteId() != null ? otdMap.get(order.getRouteId()) : null;
-            Double efficiency = efficiencyCalculator.calculateEfficiency(
+            Double efficiency = efficiencyCalculator.calculateConsumptionRatio(
                     order.getOrderReleaseTime(), transit.getArriveShopTime(), config);
 
             long[] stats = periodStats.computeIfAbsent(periodKey, k -> new long[2]);

@@ -42,9 +42,9 @@ public class SnapshotScheduler {
     private MonitorSnapshotService snapshotService;
 
     /**
-     * 每4小时采集一次（默认 cron），可通过 monitor.snapshot.cron 覆盖
+     * 快照采集 cron 表达式由配置文件 monitor.snapshot.cron 控制
      */
-    @Scheduled(cron = "${monitor.snapshot.cron:0 0 */4 * * ?}")
+    @Scheduled(cron = "${monitor.snapshot.cron}")
     public void captureSnapshots() {
         LocalDateTime now = LocalDateTime.now();
         log.info("Starting snapshot capture at {}", now);
@@ -56,7 +56,7 @@ public class SnapshotScheduler {
                 snapshot.setTabType(tabType);
 
                 // 汇总数据
-                Object summary = transitSummaryService.summary(null, null, null, null);
+                Object summary = transitSummaryService.summary(null, null);
                 snapshot.setSummaryJson(objectMapper.writeValueAsString(summary));
 
                 // 图表数据（品牌-状态分组）
